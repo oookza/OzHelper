@@ -2,24 +2,23 @@
 using Turbo.Plugins.Default;
 using System.Linq;
 using SharpDX.DirectInput;
+using SharpDX.DirectWrite;
 
 using System;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
 using System.Collections.Generic;
 
-namespace Turbo.Plugins.Zy
+namespace Turbo.Plugins.Oz
 {
-    public class ZyHelperBetaAdapter : BasePlugin, IInGameTopPainter, IKeyEventHandler
+    public class OzHelperAdapter : BasePlugin, IInGameTopPainter, IKeyEventHandler, IAfterCollectHandler
     {
 
-        public TopLabelDecorator logoDecorator { get; set; }
-        TcpClient client;
-        NetworkStream stream;
+        public TopLabelDecorator LogoDecorator { get; set; }
         private readonly int[] _skillOrder = { 2, 3, 4, 5, 0, 1 };
         public bool Show { get; set; }
         public IKeyEvent ToggleKeyEvent { get; set; }
+        private IWatch riftTimer;
+        public double TpTime;
         public Key HotKey
         {
             get { return ToggleKeyEvent.Key; }
@@ -27,7 +26,10 @@ namespace Turbo.Plugins.Zy
         }
         private StringBuilder textBuilder;
         private IFont Font;
-        public ZyHelperBetaAdapter()
+        private IFont[] FontBytes = new IFont[8];
+        private Byte[] Bytes = new Byte[8];
+        private Byte ByteCounter = 0;
+        public OzHelperAdapter()
         {
             Enabled = true;
         }
@@ -35,27 +37,18 @@ namespace Turbo.Plugins.Zy
         public override void Load(IController hud)
         {
             base.Load(hud);
-
-            string textFunc() => "ZH";
-            logoDecorator = new TopLabelDecorator(Hud)
+            TpTime = 0;
+            string textFunc() => "OZ";
+            LogoDecorator = new TopLabelDecorator(Hud)
             {
                 TextFont = Hud.Render.CreateFont("tahoma", 8, 255, 146, 99, 6, true, false, false),
                 TextFunc = textFunc,
             };
-
+            riftTimer = Hud.Time.CreateWatch();
             HotKey = Key.F11;
             Show = false;
             Font = Hud.Render.CreateFont("tahoma", 8, 255, 146, 99, 6, true, false, false);
             textBuilder = new StringBuilder();
-
-            int port = 2206;
-            client = new TcpClient("localhost", port);
-            if (Enabled) stream = client.GetStream();
-
-
-            byte[] myWriteBuffer = Encoding.ASCII.GetBytes("Starting connection");
-            if (Enabled) stream.Write(myWriteBuffer, 0, myWriteBuffer.Length);
-            if (Enabled) stream.Flush();
         }
 
         public void OnKeyEvent(IKeyEvent keyEvent)
@@ -68,7 +61,7 @@ namespace Turbo.Plugins.Zy
 
         public static Byte Set(byte input, int pos, bool value)
         {
-            Byte result = input;
+            Byte result;
             if (value)
             {
                 result = (byte)(input | (1 << pos));
@@ -79,10 +72,165 @@ namespace Turbo.Plugins.Zy
             }
             return result;
         }
-
-
         public void PaintTopInGame(ClipState clipState)
         {
+            string Block = Char.ToString('\u2588');
+//						int FontXPos = 275 * Hud.Window.Size.Width/1280;
+//						int FontYPos = 704 * Hud.Window.Size.Height/720;
+
+						for(var i = 0; i < 8; i++)
+            {
+//                FontBytes[i] = Hud.Render.CreateFont("tahoma", 5.0f, 255, Bytes[i] & 0x0F, (Bytes[i] & 0xF0) >> 4, 0, false, false, false);
+								FontBytes[i] = Hud.Render.CreateFont("tahoma", 5.0f, 255, Bytes[i], 0, 0, false, false, false);
+                FontBytes[i].DrawText(Block, i * 5, 0);
+						}
+
+//            FontBytes[7] = Hud.Render.CreateFont("tahoma", 5.0f, 255, ByteCounter & 0x0F, (ByteCounter & 0xF0) >> 4, 0, false, false, false);
+//            FontBytes[7] = Hud.Render.CreateFont("tahoma", 5.0f, 255, ByteCounter, 0, 0, false, false, false);
+//            FontBytes[7].DrawText(Block, 30, 0);
+
+            float x = -Hud.Window.Size.Width * 0.001f;
+            float y = Hud.Window.Size.Height * 0.965f;
+
+            LogoDecorator.Paint(x, y, 30.0f, 30.0f, HorizontalAlign.Center);
+
+            if (Show)
+            {
+                float XPos = Hud.Window.Size.Width * 0.01f;
+                float YPos = Hud.Window.Size.Height * 0.1f;
+                textBuilder.Clear();
+
+                textBuilder.AppendFormat("IsInGame: {0}", Hud.Game.IsInGame);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("IsPaused: {0}", Hud.Game.IsPaused);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("IsLoading: {0}", Hud.Game.IsLoading);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("IsDead: {0}", Hud.Game.Me.IsDead);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("UiHidden: {0}", Hud.Render.UiHidden);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("Minimap: {0}", Hud.Game.MapMode == MapMode.Minimap);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("dead or portal: {0}", (Hud.Game.Me.AnimationState != AcdAnimationState.CastingPortal && Hud.Game.Me.AnimationState != AcdAnimationState.Dead));
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("in rift: {0}", (Hud.Game.SpecialArea == SpecialArea.Rift || Hud.Game.SpecialArea == SpecialArea.GreaterRift));
+                textBuilder.AppendLine();
+
+                IUiElement Chat = Hud.Render.GetUiElement("Root.NormalLayer.chatentry_dialog_backgroundScreen.chatentry_content.chat_editline");
+                IUiElement Skills = Hud.Render.GetUiElement("Root.NormalLayer.SkillPane_main.LayoutRoot.SkillsList");
+                IUiElement GameMenu = Hud.Render.GetUiElement("Root.NormalLayer.gamemenu_dialog.gamemenu_bkgrnd");
+                IUiElement LeaderboardsMain = Hud.Render.GetUiElement("Root.NormalLayer.BattleNetLeaderboard_main.LayoutRoot.OverlayContainer");
+                IUiElement AchievementsMain = Hud.Render.GetUiElement("Root.NormalLayer.BattleNetAchievements_main.LayoutRoot.OverlayContainer");
+                IUiElement Inventory = Hud.Render.GetUiElement("Root.NormalLayer.inventory_dialog_mainPage.inventory_button_backpack");
+                IUiElement contextMenu = Hud.Render.GetUiElement("Root.TopLayer.ContextMenus.PlayerContextMenu");
+
+                textBuilder.AppendFormat("Chat: {0}", (Chat != null) ? false : Chat.Visible);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("Skills: {0}", (Skills != null) ? false : Skills.Visible);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("GameMenu: {0}", (GameMenu != null) ? false : GameMenu.Visible);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("LeaderboardsMain: {0}", (LeaderboardsMain != null) ? false : LeaderboardsMain.Visible);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("AchievementsMain: {0}", (AchievementsMain != null) ? false : AchievementsMain.Visible);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("Inventory: {0}", (Inventory != null) ? false : Inventory.Visible);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("contextMenu: {0}", (contextMenu != null) ? false : contextMenu.Visible);
+                textBuilder.AppendLine();
+
+                textBuilder.AppendFormat("rift time: {0}", riftTimer.ElapsedMilliseconds);
+                textBuilder.AppendLine();
+                
+                textBuilder.AppendFormat("TpTime: {0:0.00}", TpTime);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("now: {0:0.00}", (double)DateTime.UtcNow.Ticks / 10000000.0);
+                textBuilder.AppendLine();
+                textBuilder.AppendFormat("diff: {0:0.00}", (double)DateTime.UtcNow.Ticks / 10000000.0 - TpTime);
+                textBuilder.AppendLine();
+
+                var layout = Font.GetTextLayout(textBuilder.ToString());
+                Font.DrawText(layout, XPos, YPos);
+            }
+        }
+        public void AfterCollect()
+        {
+            var riftQuest = Hud.Game.Quests.FirstOrDefault(q => q.SnoQuest.Sno == 337492) ??
+                            Hud.Game.Quests.FirstOrDefault(q => q.SnoQuest.Sno == 382695);
+            if (riftQuest == null || (riftQuest != null && riftQuest.State == QuestState.none))
+            {
+                if (riftTimer.IsRunning || riftTimer.ElapsedMilliseconds > 0)
+                {
+                    riftTimer.Reset();
+                }
+            }
+            else
+            {
+                if (!riftTimer.IsRunning && !(Hud.Game.Monsters.Any(m => m.Rarity == ActorRarity.Boss && !m.IsAlive) || (riftQuest.QuestStepId == 34 || riftQuest.QuestStepId == 46)))
+                    riftTimer.Start();
+
+                if (Hud.Game.Monsters.Any(m => m.Rarity == ActorRarity.Boss && !m.IsAlive) || (riftQuest.QuestStepId == 34 || riftQuest.QuestStepId == 46) && riftTimer.IsRunning)
+                    riftTimer.Stop();
+            }
+
+            bool Active = true;
+            for (int i = 0; i < Bytes.Length; i++)
+            {
+                Bytes[i] = 0;
+                Bytes[i] = Set(Bytes[i], 0, true);
+            }
+            Active = Active && Hud.Game.IsInGame;
+            Active = Active && !Hud.Game.IsLoading;
+            Active = Active && !Hud.Game.IsInTown;
+            Active = Active && !Hud.Game.Me.IsDead;
+            Active = Active && !Hud.Render.UiHidden;
+            Active = Active && Hud.Game.MapMode == MapMode.Minimap;
+            Active = Active && (Hud.Game.Me.AnimationState != AcdAnimationState.CastingPortal && Hud.Game.Me.AnimationState != AcdAnimationState.Dead);
+            IUiElement Chat = Hud.Render.GetUiElement("Root.NormalLayer.chatentry_dialog_backgroundScreen.chatentry_content.chat_editline");
+            IUiElement Friendslist = Hud.Render.GetUiElement("Root.NormalLayer.BattleNetFriendsList_main.LayoutRoot.OverlayContainer.FriendsListContent");
+            IUiElement Skills = Hud.Render.GetUiElement("Root.NormalLayer.SkillPane_main.LayoutRoot.SkillsList");
+            IUiElement GameMenu = Hud.Render.GetUiElement("Root.NormalLayer.gamemenu_dialog.gamemenu_bkgrnd");
+            IUiElement LeaderboardsMain = Hud.Render.GetUiElement("Root.NormalLayer.BattleNetLeaderboard_main.LayoutRoot.OverlayContainer");
+            IUiElement AchievementsMain = Hud.Render.GetUiElement("Root.NormalLayer.BattleNetAchievements_main.LayoutRoot.OverlayContainer");
+            IUiElement Inventory = Hud.Render.GetUiElement("Root.NormalLayer.inventory_dialog_mainPage.inventory_button_backpack");
+            IUiElement contextMenu = Hud.Render.GetUiElement("Root.TopLayer.ContextMenus.PlayerContextMenu");
+            IUiElement LeavingGame = Hud.Render.GetUiElement("Root.TopLayer.BattleNetNotifications_main.LayoutRoot.LeaveGameWindow.LogoutContainer");
+
+
+            Active = Active && (!Chat.Visible);
+            Active = Active && (!Friendslist.Visible);
+            if (Hud.Game.MapMode == MapMode.WaypointMap || Hud.Game.MapMode == MapMode.ActMap)
+            {
+                TpTime = (double)DateTime.UtcNow.Ticks / 10000000.0;
+                Active = false;
+            }
+            else
+            {
+                double Now = (double)DateTime.UtcNow.Ticks / 10000000.0;
+                double BufferTime = Now - TpTime;
+                if (BufferTime < 1.0)
+                {
+                    Active = false;//dont interrupt tp
+                }
+            }
+            
+            Active = Active && (!Skills.Visible);
+            Active = Active && (!GameMenu.Visible);
+            Active = Active && (!LeaderboardsMain.Visible);
+            Active = Active && (!AchievementsMain.Visible);
+            Active = Active && (!Inventory.Visible);
+            Active = Active && (!contextMenu.Visible);
+            if (LeavingGame != null)
+            {
+                Active = Active && (!LeavingGame.Visible);
+            }
+
+            if (!Active)
+            {
+                System.Threading.Thread.Sleep(2);
+                return;
+            }
             bool IPOnCooldown = false;
             bool WarCryOnCooldown = false;
             float NecroDistance = 0.0f;
@@ -91,7 +239,6 @@ namespace Turbo.Plugins.Zy
             float ChargeBarbDistance = 0.0f;
             float Rat1Distance = 0.0f;
             float Rat2Distance = 0.0f;
-            bool Active = false;
             bool FalterOnCooldown = false;
             bool BerserkerOnCooldown = false;
             bool ImBarb = false;
@@ -139,6 +286,7 @@ namespace Turbo.Plugins.Zy
             bool SimBuffActive = false;
             bool SimOnCooldown = false;
             bool DontCastSim = false;
+            bool DontCastLand = false;
             bool CastSimInChanneling = false;
             bool InARift = false;
             bool ImZnec = false;
@@ -149,8 +297,13 @@ namespace Turbo.Plugins.Zy
             bool Rat1Dead = false;
             bool Rat2Dead = false;
             double SimCD = 120.0d;
+            bool[] IsBuffable = new bool[7];
             bool PartyIsBuffable = true;
-			bool ChannelingAfterDelay = false;
+            bool CanCast = true;
+            bool ZnecLandRunningOut = true;
+            bool ChannelingAfterDelay = false;
+            bool BlindingFlashActive = false;
+            bool BlindingFlashOnCooldown = false;
 
             bool CastIp = false;
             bool CastWc = false;
@@ -176,6 +329,8 @@ namespace Turbo.Plugins.Zy
             bool CastArcaneBlast = false;
             bool CastExplosiveBlast = false;
 			bool CastBloodNova = false;
+            bool CastBlindingFlash = false;
+            bool CastCommandSkeletons = false;
 
             bool IpEquipped = false;
             bool WcEquipped = false;
@@ -199,6 +354,8 @@ namespace Turbo.Plugins.Zy
             bool ArchonEquipped = false;
             bool ExplosiveBlastEquippped = false;
             bool BloodNovaEquipped = false;
+            bool BlindingFlashEquipped = false;
+            bool CommandSkeletonsEquipped = false;
 
             IWorldCoordinate MyPosition = Hud.Game.Players.First().FloorCoordinate;
             IWorldCoordinate WizPosition = Hud.Game.Players.First().FloorCoordinate;
@@ -290,12 +447,17 @@ namespace Turbo.Plugins.Zy
                         if ((buff == null) || (buff.IconCounts[0] <= 0)) continue;
                         EpiphanyBuffActive = buff.TimeLeftSeconds[0] > 0.5;
                     }
+                    if (skill.SnoPower.Sno == 136954)//Monk_BlindingFlash
+                    {
+                        BlindingFlashEquipped = true;
+                        BlindingFlashOnCooldown = skill.IsOnCooldown;
+                        BlindingFlashActive = (Hud.Game.Me.GetAttributeValue(Hud.Sno.Attributes.Power_Buff_1_Visual_Effect_A, 136954) == 1.0);
+                    }
                     if (skill.SnoPower.Sno == 373143)//Monk_MantraOfHealing
                     {
                         MantraOfHealingOnCooldown = skill.IsOnCooldown;
                         MantraHealingEquipped = true;
                     }
-
                     if (skill.SnoPower.Sno == 96090)//Monk_SweepingWind
                     {
                         SweepingWindEquipped = true;
@@ -308,33 +470,31 @@ namespace Turbo.Plugins.Zy
 						RecastSweepingWind = skill.Buff.TimeLeftSeconds[0] < 1.0;
                         
                     }
-
                     if (skill.SnoPower.Sno == 69130)//Monk_BreathOfHeaven
                     {
                         BohOnCooldown = skill.IsOnCooldown;
                         BohEquipped = true;
                     }
-
                     if (skill.SnoPower.Sno == 375088)//Monk_MantraOfConviction
                     {
                         MantraConvictionEquipped = true;
                     }
-
                     //wizard
                     if (skill.SnoPower.Sno == 74499)//Wizard_StormArmor
                     {
-                        StormArmorBuffActive = skill.BuffIsActive;
                         StormArmorOnCooldown = skill.IsOnCooldown;
                         StormArmorEquipped = true;
+                        var buff = skill.Buff;
+                        if ((buff == null) || (buff.IconCounts[0] <= 0))
+                            continue;
+                        StormArmorBuffActive = buff.TimeLeftSeconds[0] > 60.0;
                     }
-
                     if (skill.SnoPower.Sno == 76108)//Wizard_MagicWeapon
                     {
                         MagicWeaponBuffActive = skill.BuffIsActive;
                         MagicWeaponOnCooldown = skill.IsOnCooldown;
                         MagicWeaponEquipped = true;
                     }
-
                     if (skill.SnoPower.Sno == 134872)//Wizard_Archon
                     {
                         var buff = player.Powers.GetBuff(Hud.Sno.SnoPowers.Wizard_Archon.Sno);
@@ -344,7 +504,6 @@ namespace Turbo.Plugins.Zy
                         }
                         ArchonEquipped = true;
                     }
-
                     if (skill.SnoPower.Sno == 87525)//Wizard_ExplosiveBlast { get; } // 87525
                     {
                         ExplosiveBlastOnCooldown = skill.IsOnCooldown;
@@ -414,7 +573,10 @@ namespace Turbo.Plugins.Zy
                         BloodNovaOnCooldown = skill.IsOnCooldown;
                         BloodNovaEquipped = true;
                     }
-
+                    if (skill.SnoPower.Sno == 453801)//Necromancer_CommandSkeletons { get; } // 453801
+                    {
+                        CommandSkeletonsEquipped = true;
+                    }
                     //dh
                     if (skill.SnoPower.Sno == 302846)//DemonHunter_Vengeance { get; }
                     {
@@ -436,9 +598,37 @@ namespace Turbo.Plugins.Zy
                         PreparationEquipped = true;
                     }
                 }
+
+                var LoadingBuff = player.Powers.GetBuff(212032);
+                if (!(LoadingBuff == null || !LoadingBuff.Active))
+                {
+                    CanCast = false;
+                }
+                var GhostedBuff = player.Powers.GetBuff(224639);
+                if (!(GhostedBuff == null || !GhostedBuff.Active))
+                {
+                    CanCast = false;
+                }
+                var InvulBuff = player.Powers.GetBuff(439438);
+                if (!(InvulBuff == null || !InvulBuff.Active))
+                {
+                    CanCast = false;
+                }
+                var UntargetableDuringBuff = player.Powers.GetBuff(30582);
+                if (!(UntargetableDuringBuff == null || !UntargetableDuringBuff.Active))
+                {
+                    CanCast = false;
+                }
             }
 
             int RatsFound = 0;
+
+            IsBuffable[(int)HeroClass.Barbarian] = true;
+            IsBuffable[(int)HeroClass.Wizard] = true;
+            IsBuffable[(int)HeroClass.Monk] = true;
+            IsBuffable[(int)HeroClass.Necromancer] = true;
+            IsBuffable[(int)HeroClass.DemonHunter] = true;
+            IsBuffable[(int)HeroClass.Crusader] = true;
             foreach (var player in Hud.Game.Players)//others
             {
 
@@ -488,27 +678,6 @@ namespace Turbo.Plugins.Zy
                         WizPosition = player.FloorCoordinate;
                         WizardIngame = true;
                     }
-					
-					var LoadingBuff = player.Powers.GetBuff(212032);
-					if (!(LoadingBuff == null || !LoadingBuff.Active))
-					{
-						PartyIsBuffable = false;
-					}
-					var GhostedBuff = player.Powers.GetBuff(224639);
-					if (!(GhostedBuff == null || !GhostedBuff.Active))
-					{
-						PartyIsBuffable = false;
-					}
-					var InvulBuff = player.Powers.GetBuff(439438);
-					if (!(InvulBuff == null || !InvulBuff.Active))
-					{
-						PartyIsBuffable = false;
-					}
-					var UntargetableDuringBuff = player.Powers.GetBuff(30582);
-					if (!(UntargetableDuringBuff == null || !UntargetableDuringBuff.Active))
-					{
-						PartyIsBuffable = false;
-					}
                 }
                 if (player.HeroClassDefinition.HeroClass == HeroClass.Monk)
                 {
@@ -558,6 +727,17 @@ namespace Turbo.Plugins.Zy
                             ImZnec = true;
 							ImNecro = true;
                         }
+                        foreach (var i in _skillOrder)
+                        {
+                            var skill = player.Powers.SkillSlots[i];
+                            if (skill == null || skill.SnoPower.Sno != 465839)
+                                continue; //, //Land of the Dead
+                            var buff = skill.Buff;
+                            if ((buff != null) && !(buff.IconCounts[0] <= 0))
+                            {
+                                ZnecLandRunningOut = buff.TimeLeftSeconds[0]<1.0d;
+                            }
+                        }
                     }
 
                     foreach (var i in _skillOrder)
@@ -603,8 +783,35 @@ namespace Turbo.Plugins.Zy
                     }
                 }
 
-                
+                if (player.IsMe) continue;
+                var LoadingBuff = player.Powers.GetBuff(212032);
+                if (!(LoadingBuff == null || !LoadingBuff.Active))
+                {
+                    IsBuffable[(int)player.HeroClassDefinition.HeroClass] = false;
+                }
+                var GhostedBuff = player.Powers.GetBuff(224639);
+                if (!(GhostedBuff == null || !GhostedBuff.Active))
+                {
+                    IsBuffable[(int)player.HeroClassDefinition.HeroClass] = false;
+                }
+                var InvulBuff = player.Powers.GetBuff(439438);
+                if (!(InvulBuff == null || !InvulBuff.Active))
+                {
+                    IsBuffable[(int)player.HeroClassDefinition.HeroClass] = false;
+                }
+                var UntargetableDuringBuff = player.Powers.GetBuff(30582);
+                if (!(UntargetableDuringBuff == null || !UntargetableDuringBuff.Active))
+                {
+                    IsBuffable[(int)player.HeroClassDefinition.HeroClass] = false;
+                }
             }
+
+            PartyIsBuffable = IsBuffable[(int)HeroClass.Barbarian] &&
+            IsBuffable[(int)HeroClass.Wizard] &&
+            IsBuffable[(int)HeroClass.Monk] &&
+            IsBuffable[(int)HeroClass.Necromancer] &&
+            IsBuffable[(int)HeroClass.DemonHunter] &&
+            IsBuffable[(int)HeroClass.Crusader];
 
             WizDistance = WizPosition.XYDistanceTo(MyPosition);
             MonkDistance = MonkPosition.XYDistanceTo(MyPosition);
@@ -635,28 +842,18 @@ namespace Turbo.Plugins.Zy
 
             InARift = (Hud.Game.SpecialArea == SpecialArea.Rift || Hud.Game.SpecialArea == SpecialArea.GreaterRift);
 			
-            Active = true;
-            Active = Active && Hud.Game.IsInGame;
-            Active = Active && !Hud.Game.IsLoading;
-            Active = Active && !Hud.Game.IsInTown;
-            Active = Active && !Hud.Game.Me.IsDead;
-            Active = Active && !Hud.Render.UiHidden;
-            Active = Active && Hud.Game.MapMode == MapMode.Minimap;
-            Active = Active && (Hud.Game.Me.AnimationState != AcdAnimationState.CastingPortal && Hud.Game.Me.AnimationState != AcdAnimationState.Dead);
-
+            
             bool GRGuardianIsDead = false;
-            var riftQuest = Hud.Game.Quests.FirstOrDefault(q => q.SnoQuest.Sno == 337492) ??
-                            Hud.Game.Quests.FirstOrDefault(q => q.SnoQuest.Sno == 382695);
             if (riftQuest != null)
             {
                 if (Hud.Game.Monsters.Any(m => m.Rarity == ActorRarity.Boss && !m.IsAlive))
                 {
                     GRGuardianIsDead = true;
                 }
-                else
+                /*else
                 {
                     GRGuardianIsDead = (riftQuest.QuestStepId == 34 || riftQuest.QuestStepId == 46);
-                };
+                };*/
             }
 
             Active = Active && !GRGuardianIsDead;
@@ -677,15 +874,15 @@ namespace Turbo.Plugins.Zy
                     WizInIpRange = (Math.Max(WizDistance, MonkDistance) <= 45);
                 }
 
-                CastIp = !IPOnCooldown && IpEquipped && PartyIsBuffable && (!BossIsSpawned && WizInIpRange ||
-                           BossIsSpawned && (NecroDistance <= 45));
-                CastFalter = FalterEquipped && !FalterOnCooldown && (!BossIsSpawned && (WizDistance <= 20) ||
+                CastIp = CanCast && !IPOnCooldown && IpEquipped && (!BossIsSpawned && WizInIpRange && IsBuffable[(int)HeroClass.Wizard] ||
+                           BossIsSpawned && (NecroDistance <= 45) && IsBuffable[(int)HeroClass.Necromancer]);
+                CastFalter = CanCast && FalterEquipped && !FalterOnCooldown && (!BossIsSpawned && (WizDistance <= 20) ||
                            BossIsSpawned);
-                CastWc = WcEquipped && !WarCryOnCooldown && PartyIsBuffable && (!ChilanikBuff || NecroDistance <= 100);
+                CastWc = CanCast && WcEquipped && !WarCryOnCooldown && PartyIsBuffable && (!ChilanikBuff || WizDistance <= 100 || BossIsSpawned);
             }
             else if (NecrosIngame == 3)//rats
             {
-                CastIp = !IPOnCooldown && IpEquipped && PartyIsBuffable;
+                CastIp = CanCast && !IPOnCooldown && IpEquipped && PartyIsBuffable;
                 if (!Rat1Dead)
                 {
                     CastIp = CastIp && (Rat1Distance <= 45);
@@ -694,57 +891,80 @@ namespace Turbo.Plugins.Zy
                 {
                     CastIp = CastIp && (Rat2Distance <= 45);
                 }
-                CastFalter = FalterEquipped && !FalterOnCooldown;
-                CastWc = WcEquipped && !WarCryOnCooldown && PartyIsBuffable;
+                CastFalter = CanCast && FalterEquipped && !FalterOnCooldown;
+                CastWc = CanCast && WcEquipped && !WarCryOnCooldown && PartyIsBuffable;
             }
             else
             {
-                CastIp = !IPOnCooldown && IpEquipped && PartyIsBuffable && (Hud.Game.NumberOfPlayersInGame == (Hud.Game.Players.Where(p => p.CentralXyDistanceToMe <= 45)).Count());
-                CastFalter = FalterEquipped && !FalterOnCooldown;
-                CastWc = (WcEquipped && !WarCryOnCooldown && PartyIsBuffable && (!ChilanikBuff || (Hud.Game.NumberOfPlayersInGame == (Hud.Game.Players.Where(p => p.CentralXyDistanceToMe <= 45)).Count())));
+                CastIp = CanCast && !IPOnCooldown && IpEquipped && PartyIsBuffable && (Hud.Game.NumberOfPlayersInGame == (Hud.Game.Players.Where(p => p.CentralXyDistanceToMe <= 45)).Count());
+                CastFalter = CanCast && FalterEquipped && !FalterOnCooldown;
+                CastWc = CanCast && (WcEquipped && !WarCryOnCooldown && PartyIsBuffable && (!ChilanikBuff || (Hud.Game.NumberOfPlayersInGame == (Hud.Game.Players.Where(p => p.CentralXyDistanceToMe <= 45)).Count())));
             }
             
             
 
 
-            CastBerserker = BerserkerEquipped && !BerserkerOnCooldown && !BerserkerBuffActive;
-            CastSprint = SprintEquipped && !SprintOnCooldown && Hud.Game.Me.Stats.ResourceCurFury >= 20 && !SprintBuffActive;
-            CastEpiphany = EpiphanyEquipped && !EpiphanyOnCooldown && !EpiphanyBuffActive;
-            CastMantraHealing = MantraHealingEquipped && !MantraOfHealingOnCooldown && Hud.Game.Me.Stats.ResourceCurSpirit >= (0.3 * Hud.Game.Me.Stats.ResourceMaxSpirit) && (Range75Enemies >= 1);
-            CastSweepingWind = SweepingWindEquipped && RecastSweepingWind && Hud.Game.Me.Stats.ResourceCurSpirit >= (Hud.Game.Me.Stats.ResourceMaxSpirit / 2.0);
-            CastBoh = BohEquipped && !BohOnCooldown && ((Hud.Game.SpecialArea == SpecialArea.Rift) || BarbIngame && (ChargeBarbDistance <= 12) && BarbHasValidActor);
-            CastMantraConviction = MantraConvictionEquipped && Hud.Game.Me.Stats.ResourceCurSpirit >= (Hud.Game.Me.Stats.ResourceMaxSpirit / 2.0);
-            CastLotd = LotdEquipped && !LotDOnCooldown && !LotDBuffActive && (Range75Enemies >= 1);
+            CastBerserker = CanCast && BerserkerEquipped && !BerserkerOnCooldown && !BerserkerBuffActive;
+            CastSprint = CanCast && SprintEquipped && !SprintOnCooldown && Hud.Game.Me.Stats.ResourceCurFury >= 20 && !SprintBuffActive;
+            CastEpiphany = CanCast && EpiphanyEquipped && !EpiphanyOnCooldown && !EpiphanyBuffActive;
+            CastMantraHealing = CanCast && MantraHealingEquipped && !MantraOfHealingOnCooldown && Hud.Game.Me.Stats.ResourceCurSpirit >= (0.3 * Hud.Game.Me.Stats.ResourceMaxSpirit) && (Range75Enemies >= 1);
+            CastSweepingWind = CanCast && SweepingWindEquipped && RecastSweepingWind && Hud.Game.Me.Stats.ResourceCurSpirit >= (Hud.Game.Me.Stats.ResourceMaxSpirit / 2.0);
+            CastBoh = CanCast && BohEquipped && !BohOnCooldown && ((Hud.Game.SpecialArea == SpecialArea.Rift) || BarbIngame && (ChargeBarbDistance <= 12) && BarbHasValidActor);
+            CastMantraConviction = CanCast && MantraConvictionEquipped && Hud.Game.Me.Stats.ResourceCurSpirit >= (Hud.Game.Me.Stats.ResourceMaxSpirit / 2.0);
+            CastLotd = CanCast && LotdEquipped && !LotDOnCooldown && (!LotDBuffActive || CastSimInChanneling) && (Range75Enemies >= 1);
             //CastBoneArmor = BoneArmorEquipped && (((BoneArmorAlmostRunningOut && (Range25Enemies >= 1)) ||
             //                  (!BoneArmorAlmostRunningOut && (Range25Enemies >= 5))) &&
             //                  !BoneArmorOnCooldown);
-            CastBoneArmor = BoneArmorEquipped && (Range25Enemies >= 1) && !BoneArmorOnCooldown;
+            CastBoneArmor = CanCast && BoneArmorEquipped && (Range25Enemies >= 1) && !BoneArmorOnCooldown;
 			
-            DontCastSim = (((Hud.Game.CurrentTimedEventEndTick - (double)Hud.Game.CurrentGameTick) / 60.0d) > (900.0d - SimCD*0.4)) || ChannelingAfterDelay;
+            DontCastSim = (riftTimer.ElapsedMilliseconds < (1000.0*SimCD*0.4)) || ChannelingAfterDelay;
 			if(Hud.Game.SpecialArea == SpecialArea.Rift) DontCastSim = false;
-			
-            CastSim = InARift && SimEquipped && !SimOnCooldown && (!(Hud.Game.Me.Stats.ResourceMaxEssence > 450) || CastSimInChanneling);//have sim because of reservoir
-            CastPotion = Hud.Game.Me.Defense.HealthCur <= (Hud.Game.Me.Defense.HealthMax * 0.35) && !PotionIsOnCooldown;
-            CastStormArmor = !ArchonBuffActive && StormArmorEquipped && !StormArmorOnCooldown && !StormArmorBuffActive;
-            CastMagicWeapon = !ArchonBuffActive && MagicWeaponEquipped && !MagicWeaponOnCooldown && !MagicWeaponBuffActive;
-            CastVengeance = VengeanceEquipped && !VengeanceOnCooldown && !VengeanceBuffActive;
-            CastRainOfVengeance = RainOfVengeanceEquipped && !RainOfVengeanceOnCooldown && !NatBuffActive;
-            CastPreparation = PreparationEquipped && !PreparationOnCooldown && !(Hud.Game.Me.Stats.ResourceCurDiscipline >= (Hud.Game.Me.Stats.ResourceMaxDiscipline - 30));
-            ForceMove = InARift && !ImZnec && (Hud.Game.Me.AnimationState == AcdAnimationState.Idle || Hud.Game.Me.AnimationState == AcdAnimationState.Casting);
-            CastArcaneBlast = ArchonBuffActive && ArchonEquipped && !ArcaneBlastOnCooldown && (Range15Enemies > 0);
-            CastExplosiveBlast = !ArchonBuffActive && ExplosiveBlastEquippped && !ExplosiveBlastOnCooldown && Hud.Game.Me.Stats.ResourceCurArcane >= (Hud.Game.Me.Stats.ResourceMaxArcane / 3.0);
-            CastBloodNova = /*InARift && */BloodNovaEquipped && !BloodNovaOnCooldown && (Hud.Game.Me.Stats.ResourceCurEssence >= (Hud.Game.Me.Stats.ResourceMaxEssence / 3.0)) && (Range25Enemies >= 1);
 
-			if(BossIsSpawned || Hud.Game.SpecialArea == SpecialArea.Rift)
+            if (riftTimer.ElapsedMilliseconds < 10000.0)//first 10s
+            {
+                DontCastLand = true;
+            }
+            else if (riftTimer.ElapsedMilliseconds < 20000.0)//10-20s
+            {
+                DontCastLand = !ZnecLandRunningOut;
+            }
+            else if (riftTimer.ElapsedMilliseconds < 30000.0)//20-30s
+            {
+                DontCastLand = false;
+            }
+            else if (riftTimer.ElapsedMilliseconds < (1000.0 * SimCD * 0.4 + 30000.0 + 1000.0))//wait till first sim runs out
+            {
+                DontCastLand = true;
+            }
+            else
+            {
+                DontCastLand = !(Hud.Game.Me.Stats.ResourceMaxEssence > 450);//have sim because of reservoir;
+            }
+            if (Hud.Game.SpecialArea == SpecialArea.Rift) DontCastLand = false;
+
+            CastSim = CanCast && InARift && SimEquipped && !SimOnCooldown && (!(Hud.Game.Me.Stats.ResourceMaxEssence > 450) || CastSimInChanneling);//have sim because of reservoir
+            CastPotion = CanCast && Hud.Game.Me.Defense.HealthCur <= (Hud.Game.Me.Defense.HealthMax * 0.35) && !PotionIsOnCooldown;
+            CastStormArmor = CanCast && !ArchonBuffActive && StormArmorEquipped && !StormArmorOnCooldown && !StormArmorBuffActive;
+            CastMagicWeapon = CanCast && !ArchonBuffActive && MagicWeaponEquipped && !MagicWeaponOnCooldown && !MagicWeaponBuffActive;
+            CastVengeance = CanCast && VengeanceEquipped && !VengeanceOnCooldown && !VengeanceBuffActive;
+            CastRainOfVengeance = CanCast && RainOfVengeanceEquipped && !RainOfVengeanceOnCooldown && !NatBuffActive;
+            CastPreparation = CanCast && PreparationEquipped && !PreparationOnCooldown && !(Hud.Game.Me.Stats.ResourceCurDiscipline >= (Hud.Game.Me.Stats.ResourceMaxDiscipline - 30));
+            ForceMove = CanCast && !ImZnec && (Hud.Game.Me.AnimationState == AcdAnimationState.Idle || Hud.Game.Me.AnimationState == AcdAnimationState.Casting);
+            CastArcaneBlast = CanCast && ArchonBuffActive && ArchonEquipped && !ArcaneBlastOnCooldown && (Range15Enemies > 0);
+            CastExplosiveBlast = CanCast && !ArchonBuffActive && ExplosiveBlastEquippped && !ExplosiveBlastOnCooldown && Hud.Game.Me.Stats.ResourceCurArcane >= (Hud.Game.Me.Stats.ResourceMaxArcane / 3.0);
+            CastBloodNova = CanCast && BloodNovaEquipped && !BloodNovaOnCooldown && (Hud.Game.Me.Stats.ResourceCurEssence >= (Hud.Game.Me.Stats.ResourceMaxEssence / 3.0)) && (Range25Enemies >= 1);
+            CastBlindingFlash = CanCast && BlindingFlashEquipped && !BlindingFlashActive && !BlindingFlashOnCooldown;
+            CastCommandSkeletons = CanCast && CommandSkeletonsEquipped;
+
+            if (BossIsSpawned || Hud.Game.SpecialArea == SpecialArea.Rift)
 			{
-				CastSkeleMages = InARift && SkeleMagesEquipped && (Hud.Game.Me.Stats.ResourceCurEssence >= (Hud.Game.Me.Stats.ResourceMaxEssence*0.95)) && (NumberOfSkeleMages < 10);
+				CastSkeleMages = CanCast && SkeleMagesEquipped && (Hud.Game.Me.Stats.ResourceCurEssence >= (Hud.Game.Me.Stats.ResourceMaxEssence*0.95)) && (NumberOfSkeleMages < 10);
             }
 			else
 			{
-				CastSkeleMages = InARift && SkeleMagesEquipped && (Hud.Game.Me.Stats.ResourceCurEssence >= (Hud.Game.Me.Stats.ResourceMaxEssence*0.95)) && (EliteInRange && EliteTargeted || (!EliteInRange) && (NumberOfSkeleMages < 10));
+				CastSkeleMages = CanCast && SkeleMagesEquipped && (Hud.Game.Me.Stats.ResourceCurEssence >= (Hud.Game.Me.Stats.ResourceMaxEssence*0.95)) && (EliteInRange && EliteTargeted || (!EliteInRange) && (NumberOfSkeleMages < 10));
 			}
-			Byte[] Bytes = new Byte[8];
-
+			
             Bytes[0] = Set(Bytes[0], 0, true);
             Bytes[0] = Set(Bytes[0], 1, Active);
             Bytes[0] = Set(Bytes[0], 2, ImBarb);
@@ -764,13 +984,13 @@ namespace Turbo.Plugins.Zy
             Bytes[1] = Set(Bytes[1], 7, false);
 
             Bytes[2] = Set(Bytes[2], 0, true);
-            Bytes[2] = Set(Bytes[2], 1, CastIp);
-            Bytes[2] = Set(Bytes[2], 2, WarCryBuffActive);
-            Bytes[2] = Set(Bytes[2], 3, BerserkerBuffActive);
-            Bytes[2] = Set(Bytes[2], 4, EpiphanyBuffActive);
-            Bytes[2] = Set(Bytes[2], 5, LotDOnCooldown);
-            Bytes[2] = Set(Bytes[2], 6, LotDBuffActive);
-            Bytes[2] = Set(Bytes[2], 7, Hud.Game.Me.Stats.ResourceCurFury >= (Hud.Game.Me.Stats.ResourceMaxFury / 2.0));
+            Bytes[2] = Set(Bytes[2], 1, InARift);
+            Bytes[2] = Set(Bytes[2], 2, DontCastLand);
+            Bytes[2] = Set(Bytes[2], 3, CastBlindingFlash);
+            Bytes[2] = Set(Bytes[2], 4, CastCommandSkeletons);
+            Bytes[2] = Set(Bytes[2], 5, false);
+            Bytes[2] = Set(Bytes[2], 6, false);
+            Bytes[2] = Set(Bytes[2], 7, false);
 
             Bytes[3] = Set(Bytes[3], 0, true);
             Bytes[3] = Set(Bytes[3], 1, CastIp);
@@ -804,56 +1024,13 @@ namespace Turbo.Plugins.Zy
             Bytes[6] = Set(Bytes[6], 2, CastExplosiveBlast);
             Bytes[6] = Set(Bytes[6], 3, CastBloodNova);
 
-            Bytes[7] = Set(Bytes[7], 0, true);
+            //Bytes[7] = Set(Bytes[7], 0, true);
+						Bytes[7] = ByteCounter;
 
-            if (Enabled) stream.Write(Bytes, 0, Bytes.Length);
+//            Hud.Debug("OzHelper:" + BitConverter.ToString(Bytes));
+            ByteCounter++;
+
             System.Threading.Thread.Sleep(2);
-
-            if (Hud.Render.UiHidden) return;
-            float x = -Hud.Window.Size.Width * 0.001f;
-            float y = Hud.Window.Size.Height * 0.965f;
-
-            logoDecorator.Paint(x, y, 30.0f, 30.0f, HorizontalAlign.Center);
-
-            if (Show)
-            {
-                float XPos = Hud.Window.Size.Width * 0.01f;
-                float YPos = Hud.Window.Size.Height * 0.665f;
-                textBuilder.Clear();
-
-                Active = true;
-                Active = Active && Hud.Game.IsInGame;
-                Active = Active && !Hud.Game.IsPaused;
-                Active = Active && !Hud.Game.IsLoading;
-                Active = Active && !Hud.Game.IsInTown;
-                Active = Active && !Hud.Game.Me.IsDead;
-                Active = Active && !Hud.Render.UiHidden;
-                Active = Active && Hud.Game.MapMode == MapMode.Minimap;
-                Active = Active && (Hud.Game.Me.AnimationState != AcdAnimationState.CastingPortal && Hud.Game.Me.AnimationState != AcdAnimationState.Dead);
-                Active = Active && (Hud.Game.SpecialArea == SpecialArea.Rift || Hud.Game.SpecialArea == SpecialArea.GreaterRift);
-
-                textBuilder.AppendFormat("IsInGame: {0}", Hud.Game.IsInGame);
-                textBuilder.AppendLine();
-                textBuilder.AppendFormat("IsPaused: {0}", Hud.Game.IsPaused);
-                textBuilder.AppendLine();
-                textBuilder.AppendFormat("IsLoading: {0}", Hud.Game.IsLoading);
-                textBuilder.AppendLine();
-                textBuilder.AppendFormat("IsDead: {0}", Hud.Game.Me.IsDead);
-                textBuilder.AppendLine();
-                textBuilder.AppendFormat("UiHidden: {0}", Hud.Render.UiHidden);
-                textBuilder.AppendLine();
-                textBuilder.AppendFormat("Minimap: {0}", Hud.Game.MapMode == MapMode.Minimap);
-                textBuilder.AppendLine();
-                textBuilder.AppendFormat("dead or portal: {0}", (Hud.Game.Me.AnimationState != AcdAnimationState.CastingPortal && Hud.Game.Me.AnimationState != AcdAnimationState.Dead));
-                textBuilder.AppendLine();
-                textBuilder.AppendFormat("in rift: {0}", (Hud.Game.SpecialArea == SpecialArea.Rift || Hud.Game.SpecialArea == SpecialArea.GreaterRift));
-                textBuilder.AppendLine();
-                
-                
-
-                var layout = Font.GetTextLayout(textBuilder.ToString());
-                Font.DrawText(layout, XPos, YPos);
-            }
         }
 
     }
