@@ -26,7 +26,7 @@ namespace Turbo.Plugins.Oz
         }
         private StringBuilder textBuilder;
         private IFont Font;
-        private IFont[] FontBytes = new IFont[8];
+        private IFont[] FontBytes = new IFont[9];
         private Byte[] Bytes = new Byte[8];
         private Byte ByteCounter = 0;
         public OzHelperAdapter()
@@ -75,19 +75,15 @@ namespace Turbo.Plugins.Oz
         public void PaintTopInGame(ClipState clipState)
         {
             string Block = Char.ToString('\u2588');
-//						int FontXPos = 275 * Hud.Window.Size.Width/1280;
-//						int FontYPos = 704 * Hud.Window.Size.Height/720;
 
-						for(var i = 0; i < 8; i++)
+						for(var i = 0; i < Bytes.Length; i++)
             {
-//                FontBytes[i] = Hud.Render.CreateFont("tahoma", 5.0f, 255, Bytes[i] & 0x0F, (Bytes[i] & 0xF0) >> 4, 0, false, false, false);
 								FontBytes[i] = Hud.Render.CreateFont("tahoma", 5.0f, 255, Bytes[i], 0, 0, false, false, false);
-                FontBytes[i].DrawText(Block, i * 5, 0);
+                FontBytes[i].DrawText(Block, 0, i * 5);
 						}
 
-//            FontBytes[7] = Hud.Render.CreateFont("tahoma", 5.0f, 255, ByteCounter & 0x0F, (ByteCounter & 0xF0) >> 4, 0, false, false, false);
-//            FontBytes[7] = Hud.Render.CreateFont("tahoma", 5.0f, 255, ByteCounter, 0, 0, false, false, false);
-//            FontBytes[7].DrawText(Block, 30, 0);
+						FontBytes[8] = Hud.Render.CreateFont("tahoma", 5.0f, 255, ByteCounter, 0, 0, false, false, false);
+            FontBytes[8].DrawText(Block, 0, Bytes.Length * 5);
 
             float x = -Hud.Window.Size.Width * 0.001f;
             float y = Hud.Window.Size.Height * 0.965f;
@@ -228,7 +224,8 @@ namespace Turbo.Plugins.Oz
 
             if (!Active)
             {
-                System.Threading.Thread.Sleep(2);
+                ByteCounter++;
+								System.Threading.Thread.Sleep(2);
                 return;
             }
             bool IPOnCooldown = false;
@@ -1024,9 +1021,8 @@ namespace Turbo.Plugins.Oz
             Bytes[6] = Set(Bytes[6], 2, CastExplosiveBlast);
             Bytes[6] = Set(Bytes[6], 3, CastBloodNova);
 
-            //Bytes[7] = Set(Bytes[7], 0, true);
-						Bytes[7] = ByteCounter;
-
+            Bytes[7] = Set(Bytes[7], 0, true);
+						
 //            Hud.Debug("OzHelper:" + BitConverter.ToString(Bytes));
             ByteCounter++;
 

@@ -114,7 +114,6 @@ Controls.Push("PotionEnabled")
 Gui, Add, Edit, xp yp+18 w17 vPotionKey Limit1
 Controls.Push("PotionKey")
 
-
 Gui, Add, Text, section xs, Miscellaneous:
 Gui, Add, Checkbox, ys vSecondSim,  Necromancer Second Simulacrum
 Controls.Push("SecondSim")
@@ -131,25 +130,45 @@ Controls.Push("SaveButton")
 Gui, Add, Button, w80 ys vExitButton, E&xit
 Controls.Push("ExitButton")
 
+Gui, Add, Text, section xs, Status:
+Gui, Add, Checkbox, ys Disabled Check3 vStatusConnected, Connected
+Gui, Add, Checkbox, ys Disabled Check3 vStatusActive, Active
+
+GuiControl, , StatusConnected, -1
+GuiControl, , StatusActive, -1
+
 ReadConfig()
 
 Gui, Show
 
 Counter := 0
-	
+
 Loop {
 	WinGetTitle, ActiveWin, A
-	If (!Paused && ActiveWin = "Diablo III")
-	{
-		Loop 8 {
-			PixelGetColor, ByteColor, 2 + (A_Index - 1) * 5, 2
+
+	If (!Paused && ActiveWin = "Diablo III") {
+		Loop 9 {
+			PixelGetColor, ByteColor, 2, 2 + (A_Index - 1) * 5
 			Bytes[A_Index] := ByteColor & 0xFF
+			StatusConnected := Bytes[A_Index] = ByteColor ? 1 : 0
+			If (!StatusConnected)
+				Break
 		}
-		If (Counter != Bytes[8]) {
-		  Counter := Bytes[8]
+
+		If (StatusConnected) {
+			GuiControl, , StatusConnected, 1
+		}
+		Else {
+			GuiControl, , StatusConnected, 0
+		}
+
+		If (StatusConnected && Counter != Bytes[9])
+		{
+			Counter := Bytes[9]
 			ParseBytes()
 	
 			If (Active) {
+				GuiControl, , StatusActive, 1
 				Gui, Submit, NoHide
 				
 				Potion()
@@ -162,12 +181,17 @@ Loop {
 				If (ImDh)
 					DemonHunter()
 			}
+			Else {
+				GuiControl, , StatusActive, 0
+			}
 		}
 	}
 	
-	If !WinExist("ahk_class D3 Main Window Class") {
+	If (!Paused && !WinExist("ahk_class D3 Main Window Class")) {
 		ToggleStartStop()
 	}
+	
+	Sleep, 5
 }
 
 F1::ToggleStartStop()
@@ -196,11 +220,13 @@ ToggleStartStop()
 			Return
 
 		Paused := false
-		GuiControl, ,ButtonStartStop, &Stop
+		GuiControl, , ButtonStartStop, &Stop
 	}
 	Else {
 		Paused := true
-		GuiControl, ,ButtonStartStop, &Resume
+		GuiControl, , ButtonStartStop, &Start
+		GuiControl, , StatusConnected, -1
+		GuiControl, , StatusActive, -1
 	}
 	
 	ToggleControls()
