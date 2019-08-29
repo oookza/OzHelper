@@ -1,6 +1,6 @@
 #NoEnv
-#Warn
-SetBatchLines, -1
+SetBatchLines -1
+ListLines Off
 
 ;Classes := [ "Barbarian", "Monk", "Necromancer", "Wizard", "DemonHunter" ]
 Classes := [ "Barbarian", "Monk", "Necromancer", "DemonHunter" ]
@@ -123,7 +123,7 @@ Controls.Push("SecondSim")
 Gui, Add, Text, section xs, Force Stand Still:
 Gui, Add, Edit, ys w40 vForceStandStillKey Limit5
 Controls.Push("ForceStandStillKey")
-Gui, Add, Text, ys, Character, Space, Shift
+Gui, Add, Text, ys, (Character, Space, Alt, Shift, Ctrl)
 
 Gui, Add, Button, Default w80 section xs vButtonStartStop gButtonStartStop, &Start
 Gui, Add, Button, w80 ys vSaveButton, S&ave
@@ -182,6 +182,10 @@ ButtonSave:
 Return	
 
 ButtonExit:
+	ExitApp
+Return
+
+GuiClose:
 	ExitApp
 Return
 
@@ -319,15 +323,22 @@ SendKeyOrMouseWithoutMove(input)
 	global
 	
 	If (input = "L") {
-		ControlSend, , {%ForceStandStillKey% Down}, ahk_class D3 Main Window Class
-		ControlClick, , ahk_class D3 Main Window Class
-		ControlSend, , {%ForceStandStillKey% Up}, ahk_class D3 Main Window Class
+		GetKeyState, state, %ForceStandStillKey%
+		
+		If (state = "D") {
+			ControlClick, , ahk_class D3 Main Window Class, ,L
+		}
+		Else {
+			ControlSend, , {Blind}{%ForceStandStillKey% Down}, ahk_class D3 Main Window Class
+			ControlClick, , ahk_class D3 Main Window Class, ,L
+			ControlSend, , {Blind}{%ForceStandStillKey% Up}, ahk_class D3 Main Window Class
+		}
 	}
 	Else If (input = "R") {
 		ControlClick, , ahk_class D3 Main Window Class, ,R
 	}
 	Else {
-		ControlSend, , {%input%}, ahk_class D3 Main Window Class
+		ControlSend, , {Blind}{%input%}, ahk_class D3 Main Window Class
 	}
 }
 
@@ -495,6 +506,8 @@ Barbarian()
 
 DemonHunter()
 {
+	global
+	
 	;Vengeance
 	if (CastVengeance && VengeanceEnabled)
 	{
