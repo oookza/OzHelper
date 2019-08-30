@@ -54,6 +54,10 @@ namespace Turbo.Plugins.Oz
 						for(var i = 0; i < FontBytes.Length; i++) {
 								FontBytes[i] = Hud.Render.CreateFont("tahoma", 5.0f, 255, i, 0, 0, false, false, false);
 						}
+
+						for(var i = 0; i < Bytes.Length; i++) {
+								Bytes[i] = 1;
+						}
         }
 
         public void OnKeyEvent(IKeyEvent keyEvent)
