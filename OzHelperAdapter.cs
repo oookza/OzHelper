@@ -26,7 +26,8 @@ namespace Turbo.Plugins.Oz
         }
         private StringBuilder textBuilder;
         private IFont Font;
-        private IFont[] FontBytes = new IFont[9];
+//        private IFont[] FontBytes = new IFont[9];
+        private IFont[] FontBytes = new IFont[256];
         private Byte[] Bytes = new Byte[8];
         private Byte ByteCounter = 0;
         public OzHelperAdapter()
@@ -49,6 +50,10 @@ namespace Turbo.Plugins.Oz
             Show = false;
             Font = Hud.Render.CreateFont("tahoma", 8, 255, 146, 99, 6, true, false, false);
             textBuilder = new StringBuilder();
+
+						for(var i = 0; i < FontBytes.Length; i++) {
+								FontBytes[i] = Hud.Render.CreateFont("tahoma", 5.0f, 255, i, 0, 0, false, false, false);
+						}
         }
 
         public void OnKeyEvent(IKeyEvent keyEvent)
@@ -78,12 +83,12 @@ namespace Turbo.Plugins.Oz
 
 						for(var i = 0; i < Bytes.Length; i++)
             {
-								FontBytes[i] = Hud.Render.CreateFont("tahoma", 5.0f, 255, Bytes[i], 0, 0, false, false, false);
-                FontBytes[i].DrawText(Block, 0, i * 5);
+//								FontBytes[i] = Hud.Render.CreateFont("tahoma", 5.0f, 255, Bytes[i], 0, 0, false, false, false);
+                FontBytes[Bytes[i]].DrawText(Block, 0, i * 5);
 						}
 
-						FontBytes[8] = Hud.Render.CreateFont("tahoma", 5.0f, 255, ByteCounter, 0, 0, false, false, false);
-            FontBytes[8].DrawText(Block, 0, Bytes.Length * 5);
+//						FontBytes[8] = Hud.Render.CreateFont("tahoma", 5.0f, 255, ByteCounter, 0, 0, false, false, false);
+            FontBytes[ByteCounter].DrawText(Block, 0, Bytes.Length * 5);
 
             float x = -Hud.Window.Size.Width * 0.001f;
             float y = Hud.Window.Size.Height * 0.965f;
