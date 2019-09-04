@@ -48,7 +48,7 @@ Wizard := [ "WaveOfForce"
 					 ,"ArcaneBlast"
 					 ,"ExplosiveBlast" ]
 
-DemonHunter := [ "Vengeance","Multishot","Preparation" ]
+DemonHunter := [ "ShadowPower", "SmokeScreen", "Vengeance", "Preparation", "Companion", "Multishot"]
 
 global Active := false
 			,ImBarb := false
@@ -84,9 +84,12 @@ global Active := false
 			,CastPotion := false
 			,CastStormArmor := false
 			,CastMagicWeapon := false
+			,CastShadowPower := false
+			,CastSmokeScreen := false
 			,CastVengeance := false
-			,CastMultishot := false
 			,CastPreparation := false
+			,CastCompanion := false
+			,CastMultishot := false
 			,CastSkeleMages := false
 			,NeedToMove := false
 			,CastExplosiveBlast := false
@@ -364,6 +367,11 @@ ParseBytes()
 	CastExplosiveBlast := Byte & 4
 	CastBloodNova := Byte & 8
 	MoveHexingPants := Byte & 16
+	
+ Byte := Bytes[8]
+	CastShadowPower := Byte & 2
+	CastSmokeScreen := Byte & 4
+	CastCompanion := Byte & 8
 }
 
 SendKeyOrMouseWithoutMove(input)
@@ -528,15 +536,28 @@ DemonHunter()
 {
 	global
 	
+	;Shadow Power
+	if (CastShadowPower && ShadowPowerEnabled)
+		SendKeyOrMouseWithoutMove(ShadowPowerKey)
+	
+	;Smoke Screen
+	if (CastSmokeScreen && SmokeScreenEnabled)
+		SendKeyOrMouseWithoutMove(SmokeScreenKey)
+	
 	;Vengeance
 	if (CastVengeance && VengeanceEnabled)
 		SendKeyOrMouseWithoutMove(VengeanceKey)
 
+	;Preparation
+	if (CastPreparation && PreparationEnabled)
+		SendKeyOrMouseWithoutMove(PreparationKey)
+	
+	;Companion
+	if (CastCompanion && CompanionEnabled)
+		SendKeyOrMouseWithoutMove(CompanionKey)
+		
 	;Multishot
 	if (CastMultishot && MultishotEnabled)
 		SendKeyOrMouseWithoutMove(MultishotKey)
 
-	;Preparation
-	if (CastPreparation && PreparationEnabled)
-		SendKeyOrMouseWithoutMove(PreparationEnabledKey)
 }

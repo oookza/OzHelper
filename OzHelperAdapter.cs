@@ -278,10 +278,22 @@ namespace Turbo.Plugins.Oz
             bool NatBuffActive = false;
             bool ImDh = false;
             bool ImSader = false;
+			// Demon Hunter
             bool VengeanceBuffActive = false;
             bool VengeanceOnCooldown = false;
+			
+            bool ShadowPowerBuffActive = false;
+            bool ShadowPowerOnCooldown = false;			
+			
+			bool SmokeScreenBuffActive = false;
+            bool SmokeScreenOnCooldown = false;	
+			
+			bool PreparationOnCooldown = false;
+			bool CompanionOnCooldown = false;
             bool MultishotOnCooldown = false;
-            bool PreparationOnCooldown = false;
+       
+			
+			// 
             bool ChilanikBuff = false;
             bool BarbHasValidActor = false;
             int  NumberOfSkeleMages = 0;
@@ -323,9 +335,14 @@ namespace Turbo.Plugins.Oz
             bool CastPotion = false;
             bool CastStormArmor = false;
             bool CastMagicWeapon = false;
+			
+			bool CastShadowPower = false;
+			bool CastSmokeScreen = false;
+			bool CastCompanion = false;
             bool CastVengeance = false;
             bool CastMultishot = false;
             bool CastPreparation = false;
+			
             bool CastSkeleMages = false;
             bool CastSim = false;
             bool ForceMove = false;
@@ -350,9 +367,14 @@ namespace Turbo.Plugins.Oz
             bool BoneArmorEquipped = false;
             bool StormArmorEquipped = false;
             bool MagicWeaponEquipped = false;
+			
+			bool ShadowPowerEquipped = false;
+			bool SmokeScreenEquipped = false;
+			bool CompanionEquipped = false;
             bool VengeanceEquipped = false;
             bool MultishotEquipped = false;
             bool PreparationEquipped = false;
+			
             bool SkeleMagesEquipped = false;
             bool SimEquipped = false;
             bool ArchonEquipped = false;
@@ -583,6 +605,23 @@ namespace Turbo.Plugins.Oz
                     }
 					
                     // Demon Hunter
+					 if (skill.SnoPower.Sno == 130830)//ShadowPower { get; } // 130830
+                    {
+						ShadowPowerOnCooldown = skill.IsOnCooldown;
+                        ShadowPowerEquipped = true;
+                        var buff = skill.Buff;
+                        if ((buff == null) || (buff.IconCounts[0] <= 0)) continue;
+						ShadowPowerBuffActive = buff.TimeLeftSeconds[0] > 0.5;
+                    }
+					 if (skill.SnoPower.Sno == 130695)//SmokeScreen { get; } // 130695
+                    {
+						SmokeScreenOnCooldown = skill.IsOnCooldown;
+                        SmokeScreenEquipped = true;
+                        var buff = skill.Buff;
+                        if ((buff == null) || (buff.IconCounts[0] <= 0)) continue;
+						SmokeScreenBuffActive = buff.TimeLeftSeconds[0] > 0.5;
+                    }
+					
                     if (skill.SnoPower.Sno == 302846)//DemonHunter_Vengeance { get; }
                     {
 						VengeanceOnCooldown = skill.IsOnCooldown;
@@ -592,17 +631,24 @@ namespace Turbo.Plugins.Oz
                         VengeanceBuffActive = buff.TimeLeftSeconds[0] > 0.5;
                         
                     }
-					//rain 130831
+					  if (skill.SnoPower.Sno == 129212)//DemonHunter_Preparation { get; }
+                    {
+                        PreparationOnCooldown = skill.IsOnCooldown;
+                        PreparationEquipped = true;
+                    }
+					
+                    if (skill.SnoPower.Sno == 365311)//DemonHunter_Companion { get; } // 365311
+                    {
+                        CompanionOnCooldown = skill.IsOnCooldown;
+                        CompanionEquipped = true;
+                    }
+					
                     if (skill.SnoPower.Sno == 77649)//DemonHunter_Multishot { get; }
                     {
                         MultishotOnCooldown = skill.IsOnCooldown;
                         MultishotEquipped = true;
                     }
-                    if (skill.SnoPower.Sno == 129212)//DemonHunter_Preparation { get; }
-                    {
-                        PreparationOnCooldown = skill.IsOnCooldown;
-                        PreparationEquipped = true;
-                    }
+                  
 					
                 }
 
@@ -956,10 +1002,16 @@ namespace Turbo.Plugins.Oz
             CastPotion = CanCast && Hud.Game.Me.Defense.HealthCur <= (Hud.Game.Me.Defense.HealthMax * 0.35) && !PotionIsOnCooldown;
             CastStormArmor = CanCast && !ArchonBuffActive && StormArmorEquipped && !StormArmorOnCooldown && !StormArmorBuffActive;
             CastMagicWeapon = CanCast && !ArchonBuffActive && MagicWeaponEquipped && !MagicWeaponOnCooldown && !MagicWeaponBuffActive;
-            CastVengeance = CanCast && VengeanceEquipped && !VengeanceOnCooldown && !VengeanceBuffActive;
-            CastMultishot = CanCast && MultishotEquipped && !MultishotOnCooldown && !NatBuffActive;
+           
+		     // Demon Hunter
+		    CastShadowPower = CanCast && ShadowPowerEquipped && !ShadowPowerOnCooldown && !ShadowPowerBuffActive;
+            CastSmokeScreen = CanCast && SmokeScreenEquipped && !SmokeScreenOnCooldown && !SmokeScreenBuffActive;
+		    CastVengeance = CanCast && VengeanceEquipped && !VengeanceOnCooldown && !VengeanceBuffActive;
             CastPreparation = CanCast && PreparationEquipped && !PreparationOnCooldown && !(Hud.Game.Me.Stats.ResourceCurDiscipline >= (Hud.Game.Me.Stats.ResourceMaxDiscipline - 30));
-            ForceMove = CanCast && !ImZnec && (Hud.Game.Me.AnimationState == AcdAnimationState.Idle || Hud.Game.Me.AnimationState == AcdAnimationState.Casting);
+			CastCompanion = CanCast && CompanionEquipped && !CompanionOnCooldown && !(Hud.Game.Me.Stats.ResourceCurHatred >= (Hud.Game.Me.Stats.ResourceMaxHatred - 75));
+		    CastMultishot = CanCast && MultishotEquipped && !MultishotOnCooldown;
+          
+			ForceMove = CanCast && !ImZnec && (Hud.Game.Me.AnimationState == AcdAnimationState.Idle || Hud.Game.Me.AnimationState == AcdAnimationState.Casting);
             CastArcaneBlast = CanCast && ArchonBuffActive && ArchonEquipped && !ArcaneBlastOnCooldown && (Range15Enemies > 0);
             CastExplosiveBlast = CanCast && !ArchonBuffActive && ExplosiveBlastEquippped && !ExplosiveBlastOnCooldown && Hud.Game.Me.Stats.ResourceCurArcane >= (Hud.Game.Me.Stats.ResourceMaxArcane / 3.0);
             CastBloodNova = CanCast && BloodNovaEquipped && !BloodNovaOnCooldown && (Hud.Game.Me.Stats.ResourceCurEssence >= (Hud.Game.Me.Stats.ResourceMaxEssence / 3.0)) && (Range25Enemies >= 1);
@@ -1038,7 +1090,10 @@ namespace Turbo.Plugins.Oz
             Bytes[6] = Set(Bytes[6], 4, MoveHexingPants);
 
             Bytes[7] = Set(Bytes[7], 0, true);
-						
+			Bytes[7] = Set(Bytes[7], 1, CastShadowPower);
+  			Bytes[7] = Set(Bytes[7], 2, CastSmokeScreen);
+  			Bytes[7] = Set(Bytes[7], 2, CastCompanion);
+			
             Hud.Debug("OzHelper:" + BitConverter.ToString(Bytes));
             ByteCounter++;
 
