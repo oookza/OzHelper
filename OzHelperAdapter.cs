@@ -26,7 +26,6 @@ namespace Turbo.Plugins.Oz
         }
         private StringBuilder textBuilder;
         private IFont Font;
-//        private IFont[] FontBytes = new IFont[9];
         private IFont[] FontBytes = new IFont[256];
         private Byte[] Bytes = new Byte[8];
         private Byte ByteCounter = 0;
@@ -87,11 +86,9 @@ namespace Turbo.Plugins.Oz
 
 						for(var i = 0; i < Bytes.Length; i++)
             {
-//								FontBytes[i] = Hud.Render.CreateFont("tahoma", 5.0f, 255, Bytes[i], 0, 0, false, false, false);
                 FontBytes[Bytes[i]].DrawText(Block, 0, i * 5);
 						}
 
-//						FontBytes[8] = Hud.Render.CreateFont("tahoma", 5.0f, 255, ByteCounter, 0, 0, false, false, false);
             FontBytes[ByteCounter].DrawText(Block, 0, Bytes.Length * 5);
 
             float x = -Hud.Window.Size.Width * 0.001f;
@@ -337,6 +334,7 @@ namespace Turbo.Plugins.Oz
 			bool CastBloodNova = false;
             bool CastBlindingFlash = false;
             bool CastCommandSkeletons = false;
+            bool MoveHexingPants = false;
 
             bool IpEquipped = false;
             bool WcEquipped = false;
@@ -867,6 +865,9 @@ namespace Turbo.Plugins.Oz
 
             double Cooldown = (Hud.Game.Me.Powers.HealthPotionSkill.CooldownFinishTick - Hud.Game.CurrentGameTick) / 60d;
             bool PotionIsOnCooldown = Cooldown <= 30 && Cooldown >= 0 ? true : false;
+            bool HexingPantsIsActive = Hud.Game.Me.Powers.BuffIsActive(Hud.Sno.SnoPowers.HexingPantsOfMrYan.Sno, 2);
+            bool HexingPantsIsRelevant = (Hud.Game.Me.CubeSnoItem2.Sno == Hud.Sno.SnoItems.Unique_Pants_101_x1.Sno) || Hud.Game.Items.Any(x => x.Location == ItemLocation.Legs && x.SnoItem.Sno == Hud.Sno.SnoItems.Unique_Pants_101_x1.Sno);
+
 
             bool WizInIpRange;
             if (WizardIngame && MonkIngame)//metas
@@ -961,6 +962,7 @@ namespace Turbo.Plugins.Oz
             CastBloodNova = CanCast && BloodNovaEquipped && !BloodNovaOnCooldown && (Hud.Game.Me.Stats.ResourceCurEssence >= (Hud.Game.Me.Stats.ResourceMaxEssence / 3.0)) && (Range25Enemies >= 1);
             CastBlindingFlash = CanCast && BlindingFlashEquipped && !BlindingFlashActive && !BlindingFlashOnCooldown;
             CastCommandSkeletons = CanCast && CommandSkeletonsEquipped;
+            MoveHexingPants = CanCast && HexingPantsIsRelevant && !HexingPantsIsActive;
 
             if (BossIsSpawned || Hud.Game.SpecialArea == SpecialArea.Rift)
 			{
@@ -970,6 +972,7 @@ namespace Turbo.Plugins.Oz
 			{
 				CastSkeleMages = CanCast && SkeleMagesEquipped && (Hud.Game.Me.Stats.ResourceCurEssence >= (Hud.Game.Me.Stats.ResourceMaxEssence*0.95)) && (EliteInRange && EliteTargeted || (!EliteInRange) && (NumberOfSkeleMages < 10));
 			}
+
 			
             Bytes[0] = Set(Bytes[0], 0, true);
             Bytes[0] = Set(Bytes[0], 1, Active);
@@ -1029,10 +1032,11 @@ namespace Turbo.Plugins.Oz
             Bytes[6] = Set(Bytes[6], 1, ForceMove);
             Bytes[6] = Set(Bytes[6], 2, CastExplosiveBlast);
             Bytes[6] = Set(Bytes[6], 3, CastBloodNova);
+            Bytes[6] = Set(Bytes[6], 4, MoveHexingPants);
 
             Bytes[7] = Set(Bytes[7], 0, true);
 						
-//            Hud.Debug("OzHelper:" + BitConverter.ToString(Bytes));
+            Hud.Debug("OzHelper:" + BitConverter.ToString(Bytes));
             ByteCounter++;
 
             System.Threading.Thread.Sleep(2);

@@ -1,6 +1,17 @@
+#SingleInstance Force
 #NoEnv
+#KeyHistory 0
+#Warn
+
 SetBatchLines -1
+SetWorkingDir %A_ScriptDir%
+SetControlDelay, -1
 ListLines Off
+
+CoordMode, Pixel, Client
+CoordMode, Mouse, Client
+
+global DEFAULT_KEY_DELAY := 100
 
 ;Classes := [ "Barbarian", "Monk", "Necromancer", "Wizard", "DemonHunter" ]
 Classes := [ "Barbarian", "Monk", "Necromancer", "DemonHunter" ]
@@ -82,11 +93,16 @@ global Active := false
 			,NeedToMove := false
 			,CastExplosiveBlast := false
 			,CastBloodNova := false
+			,MoveHexingPants := false
 
 global Paused := true
 			,Bytes := []
 			,Controls := []
 			,ConvictionDuration := A_TickCount
+			,DiabloWidth
+			,DiabloHeight
+			,HexX
+			,HexY
 
 For class_index, class in Classes {
 	If (class_index = 1) {
@@ -117,7 +133,7 @@ Controls.Push("PotionKey")
 Gui, Add, Text, section xs, Miscellaneous:
 Gui, Add, Checkbox, ys vSecondSim,  Necromancer Second Simulacrum
 Controls.Push("SecondSim")
-;Gui, Add, Checkbox, vHexingPantsMacroEnabled, Hexing  Pants Force Move Macro
+Gui, Add, Checkbox, vHexingPantsEnabled, Hexing Pants Buff (Bind Middle Mouse Button to Force Move)
 
 Gui, Add, Text, section xs, Force Stand Still:
 Gui, Add, Edit, ys w40 vForceStandStillKey Limit5
@@ -141,7 +157,11 @@ ReadConfig()
 
 Gui, Show
 
+SetKeyDelay, %DEFAULT_KEY_DELAY%
 Counter := 0
+GetClientWindowSize("ahk_class D3 Main Window Class", DiabloWidth, DiabloHeight)
+HexX := Round(DiabloWidth / 2)
+HexY := Round(DiabloHeight * 0.47)
 
 Loop {
 	WinGetTitle, ActiveWin, A
@@ -157,33 +177,32 @@ Loop {
 
 		If (StatusConnected) {
 			GuiControl, , StatusConnected, 1
+			If (Counter != Bytes[9]) {
+				Counter := Bytes[9]
+				ParseBytes()
+	
+				If (Active) {
+					GuiControl, , StatusActive, 1
+					Gui, Submit, NoHide
+				
+					Potion()
+					HexingPants()
+					If (ImNecro)
+						Necromancer()
+					If (ImMonk)
+						Monk()
+					If (ImBarb)
+						Barbarian()
+					If (ImDh)
+						DemonHunter()
+				}
+				Else {
+					GuiControl, , StatusActive, 0
+				}
+			}
 		}
 		Else {
 			GuiControl, , StatusConnected, 0
-		}
-
-		If (StatusConnected && Counter != Bytes[9])
-		{
-			Counter := Bytes[9]
-			ParseBytes()
-	
-			If (Active) {
-				GuiControl, , StatusActive, 1
-				Gui, Submit, NoHide
-				
-				Potion()
-				If (ImNecro)
-					Necromancer()
-				If (ImMonk)
-					Monk()
-				If (ImBarb)
-					Barbarian()
-				If (ImDh)
-					DemonHunter()
-			}
-			Else {
-				GuiControl, , StatusActive, 0
-			}
 		}
 	}
 	
@@ -260,6 +279,9 @@ ReadConfig()
 	GuiControl, , PotionEnabled, %PotionEnabled%
 	GuiControl, , PotionKey, %PotionKey%
 
+	IniRead, HexingPantsEnabled,  OzHelper.ini, Settings,  HexingPantsEnabled, 0
+	GuiControl, , HexingPantsEnabled, %HexingPantsEnabled%
+
 	IniRead, SecondSim, OzHelper.ini, Settings, SecondSim, 0
 	GuiControl, ,SecondSim, %SecondSim%
 
@@ -282,6 +304,7 @@ WriteConfig()
 
 	IniWrite, %PotionEnabled%, OzHelper.ini, Settings, PotionEnabled
 	IniWrite, %PotionKey%, OzHelper.ini, Settings, PotionKey
+	IniWrite, %HexingPantsEnabled%, OzHelper.ini, Settings, HexingPantsEnabled
 	IniWrite, %SecondSim%, OzHelper.ini, Settings, SecondSim
 	IniWrite, %ForceStandStillKey%, OzHelper.ini, Settings, ForceStandStillKey
 }
@@ -298,27 +321,27 @@ ParseBytes()
 	ImSader := Byte & 128
 
   Byte := Bytes[2]
-	ConventionLight := Bytes[2] & 2
-	ConventionArcane := Bytes[2] & 4
-	ConventionCold := Bytes[2] & 8
-	ConventionFire := Bytes[2] & 16
-	BlackholeBuffActive := Bytes[2] & 32
-	CastArcaneBlast := Bytes[2] & 64
+	ConventionLight := Byte & 2
+	ConventionArcane := Byte & 4
+	ConventionCold := Byte & 8
+	ConventionFire := Byte & 16
+	BlackholeBuffActive := Byte & 32
+	CastArcaneBlast := Byte & 64
 
   Byte := Bytes[3]
 	InARift := Byte & 2
-	DontCastLand := Bytes[3] & 4
-	CastBlindingFlash := Bytes[3] & 8
-	CastCommandSkeletons := Bytes[3] & 16
+	DontCastLand := Byte & 4
+	CastBlindingFlash := Byte & 8
+	CastCommandSkeletons := Byte & 16
 
   Byte := Bytes[4]
 	CastIp := Byte & 2
-	CastSim := Bytes[4] & 4
-	DontCastSim := Bytes[4] & 8
-	CastFalter := Bytes[4] & 16
-	CastBerserker := Bytes[4] & 32
-	CastSprint := Bytes[4] & 64
-	CastEpiphany := Bytes[4] & 128
+	CastSim := Byte & 4
+	DontCastSim := Byte & 8
+	CastFalter := Byte & 16
+	CastBerserker := Byte & 32
+	CastSprint := Byte & 64
+	CastEpiphany := Byte & 128
 
   Byte := Bytes[5]
 	CastWc := Byte & 2
@@ -342,6 +365,7 @@ ParseBytes()
 	NeedToMove := Byte & 2
 	CastExplosiveBlast := Byte & 4
 	CastBloodNova := Byte & 8
+	MoveHexingPants := Byte & 16
 }
 
 SendKeyOrMouseWithoutMove(input)
@@ -368,15 +392,31 @@ SendKeyOrMouseWithoutMove(input)
 	}
 }
 
+GetClientWindowSize(ClientWindow, ByRef ClientWidth, ByRef ClientHeight)
+{
+	hwnd := WinExist(ClientWindow)
+	VarSetCapacity(rc, 16)
+	DllCall("GetClientRect", "uint", hwnd, "uint", &rc)
+	ClientWidth := NumGet(rc, 8, "int")
+	ClientHeight := NumGet(rc, 12, "int")
+}
+
 Potion()
 {
 	global
 
 	If (CastPotion && PotionEnabled)
-		{
 			SendKeyOrMouseWithoutMove(PotionKey)
-			Sleep, 100
-		}
+}
+
+HexingPants()
+{
+	global
+
+	If (MoveHexingPants && HexingPantsEnabled) {
+		;ControlClick, x%HexX% y%HexY%, ahk_class D3 Main Window Class, , M, , NA
+		ControlClick, x%HexX% y%HexY%, ahk_class D3 Main Window Class, , M
+	}
 }
 
 Necromancer()
@@ -385,61 +425,46 @@ Necromancer()
 	
 	;Land of the Dead	
 	If (SecondSim) {
-		If (CastLotd && LandOfTheDeadEnabled && !DontCastLand) {
+		If (CastLotd && LandOfTheDeadEnabled && !DontCastLand)
 			SendKeyOrMouseWithoutMove(LandOfTheDeadKey)
-			Sleep, 100
-		}
 	}
 	else {
-		If (CastLotd && LandOfTheDeadEnabled) {
+		If (CastLotd && LandOfTheDeadEnabled)
 			SendKeyOrMouseWithoutMove(LandOfTheDeadKey)
-			Sleep, 100
-		}
 	}
 	
 	;Bone Armor
-	If (CastBoneArmor && BoneArmorEnabled) {
+	If (CastBoneArmor && BoneArmorEnabled)
 		SendKeyOrMouseWithoutMove(BoneArmorKey)
-		Sleep, 100
-	}
 	
 	;Skeletal Mage
-	If (CastSkeleMages && SkeletalMageEnabled) {
+	If (CastSkeleMages && SkeletalMageEnabled)
 		SendKeyOrMouseWithoutMove(SkeletalMageKey)
-		Sleep, 100
-	}
 
 	;Devour
 	If (DevourEnabled) {
+		SetKeyDelay, 50
 		SendKeyOrMouseWithoutMove(DevourKey)
-		Sleep, 50
+		SetKeyDelay, %DEFAULT_KEY_DELAY%
 	}
 	
 	;Simulacrum
 	If (SecondSim) {
-		If (CastSim && SimulacrumEnabled && !DontCastSim) {
+		If (CastSim && SimulacrumEnabled && !DontCastSim)
 			SendKeyOrMouseWithoutMove(SimulacrumKey)
-			Sleep, 100
-		}
 	}
 	else {
-		If (CastSim && SimulacrumEnabled) {
+		If (CastSim && SimulacrumEnabled)
 			SendKeyOrMouseWithoutMove(SimulacrumKey)
-			Sleep, 100
-		}
 	}
 
 	;Death Nova
-	If (CastBloodNova && DeathNovaEnabled) {
+	If (CastBloodNova && DeathNovaEnabled)
 		SendKeyOrMouseWithoutMove(DeathNovaKey)
-		Sleep, 100
-	}
 
 	;Command Skeletons
-	If (CastCommandSkeletons && CommandSkeletonsEnabled) {
+	If (CastCommandSkeletons && CommandSkeletonsEnabled)
 		SendKeyOrMouseWithoutMove(CommandSkeletonsKey)
-		Sleep, 100
-	}
 }
 
 Monk()
@@ -448,45 +473,31 @@ Monk()
 	
 	;Epiphany
 	if (CastEpiphany && EpiphanyEnabled)
-	{
 		SendKeyOrMouseWithoutMove(EpiphanyKey)
-		Sleep, 100
-	}
 
 	;Blinding Flash
 	if (CastBlindingFlash && BlindingFlashEnabled)
-	{
 		SendKeyOrMouseWithoutMove(BlindingFlashKey)
-		Sleep, 100
-	}
 
 	;Mantra of Healing
-	if (CastMantraHealing && MantraOfHealingEnabled)
-	{
+	if (CastMantraHealing && MantraOfHealingEnabled) {
+		SetKeyDelay, 50
 		SendKeyOrMouseWithoutMove(MantraOfHealingKey)
-		Sleep, 50
+		SetKeyDelay, %DEFAULT_KEY_DELAY%
 	}
 
 	;Sweeping Wind
 	if (CastSweepingWind && SweepingWindEnabled)
-	{
 		SendKeyOrMouseWithoutMove(SweepingWindKey)
-		Sleep, 100
-	}
 
 	;Breath of Heaven
 	if (CastBoh && BreathOfHeavenEnabled)
-	{
 		SendKeyOrMouseWithoutMove(BreathOfHeavenKey)
-		Sleep, 100
-	}
 
 	;Mantra of Conviction
-	if (CastMantraConviction && (A_TickCount - 3000 >= ConvictionDuration) && MantraOfConvictionEnabled)
-	{
+	if (CastMantraConviction && (A_TickCount - 3000 >= ConvictionDuration) && MantraOfConvictionEnabled) {
 		SendKeyOrMouseWithoutMove(MantraOfConvictionKey)
 		ConvictionDuration := A_TickCount
-		Sleep, 100
 	}
 }
 
@@ -496,38 +507,23 @@ Barbarian()
 	
 	;Ignore Pain
 	if (CastIp && IgnorePainEnabled)
-	{
 		SendKeyOrMouseWithoutMove(IgnorePainKey)
-		Sleep, 100
-	}
 
 	;War Cry
 	if (CastWc && WarCryEnabled)
-	{
 		SendKeyOrMouseWithoutMove(WarCryKey)
-		Sleep, 100
-	}
 
 	;Threatening Shout
 	if (CastFalter && ThreateningShoutEnabled)
-	{
 		SendKeyOrMouseWithoutMove(ThreateningShoutKey)
-		Sleep, 100
-	}
 
 	;Wrath of the Berserker
 	if (CastBerserker && WrathOfTheBerserkerEnabled)
-	{
 		SendKeyOrMouseWithoutMove(WrathOfTheBerserkerKey)
-		Sleep, 100
-	}
 
 	;Sprint
 	if (CastSprint && SprintEnabled)
-	{
 		SendKeyOrMouseWithoutMove(SprintKey)
-		Sleep, 100
-	}
 }
 
 DemonHunter()
@@ -536,22 +532,13 @@ DemonHunter()
 	
 	;Vengeance
 	if (CastVengeance && VengeanceEnabled)
-	{
 		SendKeyOrMouseWithoutMove(VengeanceKey)
-		Sleep, 100
-	}
 
 	;Rain of Vengeance
 	if (CastRainOfVengeance && RainOfVengeanceEnabled)
-	{
 		SendKeyOrMouseWithoutMove(RainOfVengeanceKey)
-		Sleep, 100
-	}
 
 	;Preparation
 	if (CastPreparation && PreparationEnabled)
-	{
 		SendKeyOrMouseWithoutMove(PreparationEnabledKey)
-		Sleep, 100
-	}
 }
