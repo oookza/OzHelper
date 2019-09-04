@@ -280,7 +280,7 @@ namespace Turbo.Plugins.Oz
             bool ImSader = false;
             bool VengeanceBuffActive = false;
             bool VengeanceOnCooldown = false;
-            bool RainOfVengeanceOnCooldown = false;
+            bool MultishotOnCooldown = false;
             bool PreparationOnCooldown = false;
             bool ChilanikBuff = false;
             bool BarbHasValidActor = false;
@@ -324,7 +324,7 @@ namespace Turbo.Plugins.Oz
             bool CastStormArmor = false;
             bool CastMagicWeapon = false;
             bool CastVengeance = false;
-            bool CastRainOfVengeance = false;
+            bool CastMultishot = false;
             bool CastPreparation = false;
             bool CastSkeleMages = false;
             bool CastSim = false;
@@ -351,7 +351,7 @@ namespace Turbo.Plugins.Oz
             bool StormArmorEquipped = false;
             bool MagicWeaponEquipped = false;
             bool VengeanceEquipped = false;
-            bool RainOfVengeanceEquipped = false;
+            bool MultishotEquipped = false;
             bool PreparationEquipped = false;
             bool SkeleMagesEquipped = false;
             bool SimEquipped = false;
@@ -581,7 +581,8 @@ namespace Turbo.Plugins.Oz
                     {
                         CommandSkeletonsEquipped = true;
                     }
-                    //dh
+					
+                    // Demon Hunter
                     if (skill.SnoPower.Sno == 302846)//DemonHunter_Vengeance { get; }
                     {
 						VengeanceOnCooldown = skill.IsOnCooldown;
@@ -591,16 +592,18 @@ namespace Turbo.Plugins.Oz
                         VengeanceBuffActive = buff.TimeLeftSeconds[0] > 0.5;
                         
                     }
-                    if (skill.SnoPower.Sno == 130831)//DemonHunter_RainOfVengeance { get; }
+					//rain 130831
+                    if (skill.SnoPower.Sno == 77649)//DemonHunter_Multishot { get; }
                     {
-                        RainOfVengeanceOnCooldown = skill.IsOnCooldown;
-                        RainOfVengeanceEquipped = true;
+                        MultishotOnCooldown = skill.IsOnCooldown;
+                        MultishotEquipped = true;
                     }
                     if (skill.SnoPower.Sno == 129212)//DemonHunter_Preparation { get; }
                     {
                         PreparationOnCooldown = skill.IsOnCooldown;
                         PreparationEquipped = true;
                     }
+					
                 }
 
                 var LoadingBuff = player.Powers.GetBuff(212032);
@@ -954,7 +957,7 @@ namespace Turbo.Plugins.Oz
             CastStormArmor = CanCast && !ArchonBuffActive && StormArmorEquipped && !StormArmorOnCooldown && !StormArmorBuffActive;
             CastMagicWeapon = CanCast && !ArchonBuffActive && MagicWeaponEquipped && !MagicWeaponOnCooldown && !MagicWeaponBuffActive;
             CastVengeance = CanCast && VengeanceEquipped && !VengeanceOnCooldown && !VengeanceBuffActive;
-            CastRainOfVengeance = CanCast && RainOfVengeanceEquipped && !RainOfVengeanceOnCooldown && !NatBuffActive;
+            CastMultishot = CanCast && MultishotEquipped && !MultishotOnCooldown && !NatBuffActive;
             CastPreparation = CanCast && PreparationEquipped && !PreparationOnCooldown && !(Hud.Game.Me.Stats.ResourceCurDiscipline >= (Hud.Game.Me.Stats.ResourceMaxDiscipline - 30));
             ForceMove = CanCast && !ImZnec && (Hud.Game.Me.AnimationState == AcdAnimationState.Idle || Hud.Game.Me.AnimationState == AcdAnimationState.Casting);
             CastArcaneBlast = CanCast && ArchonBuffActive && ArchonEquipped && !ArcaneBlastOnCooldown && (Range15Enemies > 0);
@@ -1024,7 +1027,7 @@ namespace Turbo.Plugins.Oz
             Bytes[5] = Set(Bytes[5], 2, CastStormArmor);
             Bytes[5] = Set(Bytes[5], 3, CastMagicWeapon);
             Bytes[5] = Set(Bytes[5], 4, CastVengeance);
-            Bytes[5] = Set(Bytes[5], 5, CastRainOfVengeance);
+            Bytes[5] = Set(Bytes[5], 5, CastMultishot);
             Bytes[5] = Set(Bytes[5], 6, CastPreparation);
             Bytes[5] = Set(Bytes[5], 7, CastSkeleMages);
 

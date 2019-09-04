@@ -48,9 +48,7 @@ Wizard := [ "WaveOfForce"
 					 ,"ArcaneBlast"
 					 ,"ExplosiveBlast" ]
 
-DemonHunter := [ "Vengeance"
-								,"RainOfVengeance"
-								,"Preparation" ]
+DemonHunter := [ "Vengeance","Multishot","Preparation" ]
 
 global Active := false
 			,ImBarb := false
@@ -87,7 +85,7 @@ global Active := false
 			,CastStormArmor := false
 			,CastMagicWeapon := false
 			,CastVengeance := false
-			,CastRainOfVengeance := false
+			,CastMultishot := false
 			,CastPreparation := false
 			,CastSkeleMages := false
 			,NeedToMove := false
@@ -357,7 +355,7 @@ ParseBytes()
 	CastStormArmor := Byte & 4
 	CastMagicWeapon := Byte & 8
 	CastVengeance := Byte & 16
-	CastRainOfVengeance := Byte & 32
+	CastMultishot := Byte & 32
 	CastPreparation := Byte & 64
 	CastSkeleMages := Byte & 128
 
@@ -534,9 +532,9 @@ DemonHunter()
 	if (CastVengeance && VengeanceEnabled)
 		SendKeyOrMouseWithoutMove(VengeanceKey)
 
-	;Rain of Vengeance
-	if (CastRainOfVengeance && RainOfVengeanceEnabled)
-		SendKeyOrMouseWithoutMove(RainOfVengeanceKey)
+	;Multishot
+	if (CastMultishot && MultishotEnabled)
+		SendKeyOrMouseWithoutMove(MultishotKey)
 
 	;Preparation
 	if (CastPreparation && PreparationEnabled)
