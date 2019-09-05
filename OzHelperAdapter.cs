@@ -1090,9 +1090,9 @@ namespace Turbo.Plugins.Oz
             Bytes[6] = Set(Bytes[6], 4, MoveHexingPants);
 
             Bytes[7] = Set(Bytes[7], 0, true);
-			Bytes[7] = Set(Bytes[7], 1, CastShadowPower);
-  			Bytes[7] = Set(Bytes[7], 2, CastSmokeScreen);
-  			Bytes[7] = Set(Bytes[7], 2, CastCompanion);
+						Bytes[7] = Set(Bytes[7], 1, CastShadowPower);
+						Bytes[7] = Set(Bytes[7], 2, CastSmokeScreen);
+						Bytes[7] = Set(Bytes[7], 3, CastCompanion);
 			
             Hud.Debug("OzHelper:" + BitConverter.ToString(Bytes));
             ByteCounter++;
