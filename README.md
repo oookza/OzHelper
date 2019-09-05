@@ -14,13 +14,9 @@ There are 2 boxes per skill\
 &nbsp;&nbsp;-The Hotkey Field which contains the hotkey thats going to get pressed by the program\
 Here '1-9' 'a-z' mean their respective letters, while 'R' / 'L' mean the left / right mouse button\
 For force stand still the additional hotkeys "shift", "alt" and "space" work\
-The Necro has some additional features:\
-&nbsp;&nbsp;'-Second Sim' casts Simulacrum and Land of the Dead after 10-20 seconds from the start of the Greater Rift\
-The buttons are self explanatory
+Second Sim' casts Simulacrum and Land of the Dead after 10-20 seconds from the start of the Greater Rift\
+The Middle Mouse Button needs to be bound to force move for the Hexing Pants buff to work
 
 # Other stuff
 The source code is open source under the Apache License 2.0.\
 Press F1 to pause\unpause the helper.
-
-# Known bugs
-If the TurboHUD overlay is transparent the helper will not work. I don't know how to change the TurboHUD transparency settings.
