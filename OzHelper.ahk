@@ -134,7 +134,9 @@ Controls.Push("PotionKey")
 Gui, Add, Text, section xs, Miscellaneous:
 Gui, Add, Checkbox, ys vSecondSim,  Necromancer Second Simulacrum
 Controls.Push("SecondSim")
+
 Gui, Add, Checkbox, vHexingPantsEnabled, Hexing Pants Buff (Bind Middle Mouse Button to Force Move)
+Controls.Push("HexingPantsEnabled")
 
 Gui, Add, Text, section xs, Force Stand Still:
 Gui, Add, Edit, ys w40 vForceStandStillKey Limit5
@@ -378,7 +380,7 @@ SendKeyOrMouseWithoutMove(input)
 {
 	global
 	
-	If (input = "L") {
+	If (input == "L") {
 		GetKeyState, state, %ForceStandStillKey%
 		
 		If (state = "D") {
@@ -390,7 +392,7 @@ SendKeyOrMouseWithoutMove(input)
 			ControlSend, , {Blind}{%ForceStandStillKey% Up}, ahk_class D3 Main Window Class
 		}
 	}
-	Else If (input = "R") {
+	Else If (input == "R") {
 		ControlClick, , ahk_class D3 Main Window Class, ,R
 	}
 	Else {
