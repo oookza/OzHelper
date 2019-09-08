@@ -12,6 +12,7 @@ CoordMode, Pixel, Client
 CoordMode, Mouse, Client
 
 global DEFAULT_KEY_DELAY := 100
+			,BYTE_COUNT := 9
 
 ;Classes := [ "Barbarian", "Monk", "Necromancer", "Wizard", "DemonHunter" ]
 Classes := [ "Barbarian", "Monk", "Necromancer", "DemonHunter" ]
@@ -48,7 +49,12 @@ Wizard := [ "WaveOfForce"
 					 ,"ArcaneBlast"
 					 ,"ExplosiveBlast" ]
 
-DemonHunter := [ "ShadowPower", "SmokeScreen", "Vengeance", "Preparation", "Companion", "Multishot"]
+DemonHunter := [ "ShadowPower"
+							 , "SmokeScreen"
+							 , "Vengeance"
+							 , "Preparation"
+							 , "Companion"
+							 , "Multishot"]
 
 global Active := false
 			,ImBarb := false
@@ -105,59 +111,8 @@ global Paused := true
 			,HexX
 			,HexY
 
-For class_index, class in Classes {
-	If (class_index = 1) {
-		Gui, Add, Text, section, %class%:
-	}
-	Else {
-		Gui, Add, Text, section xs, %class%:
-	}
-
-	For skill_index, skill in %class% {
-		Gui, Add, Picture, ys, SkillPictures\%skill%.bmp
-		Control = %skill%Enabled
-		Controls.Push(Control)
-		Gui, Add, Checkbox, xp yp+25 v%skill%Enabled
-		Control = %skill%Key
-		Controls.Push(Control)
-		Gui, Add, Edit, xp yp+18 w17 v%skill%Key Limit1
-	}
-}
-
-Gui, Add, Text, section xs, Potion:
-Gui, Add, Picture, ys, SkillPictures\Potion.bmp
-Gui, Add, Checkbox, xp yp+25 vPotionEnabled
-Controls.Push("PotionEnabled")
-Gui, Add, Edit, xp yp+18 w17 vPotionKey Limit1
-Controls.Push("PotionKey")
-
-Gui, Add, Text, section xs, Miscellaneous:
-Gui, Add, Checkbox, ys vSecondSim,  Necromancer Second Simulacrum
-Controls.Push("SecondSim")
-
-Gui, Add, Checkbox, vHexingPantsEnabled, Hexing Pants Buff (Bind Middle Mouse Button to Force Move)
-Controls.Push("HexingPantsEnabled")
-
-Gui, Add, Text, section xs, Force Stand Still:
-Gui, Add, Edit, ys w40 vForceStandStillKey Limit5
-Controls.Push("ForceStandStillKey")
-Gui, Add, Text, ys, (Character, Space, Alt, Shift, Ctrl)
-
-Gui, Add, Button, Default w80 section xs vButtonStartStop gButtonStartStop, &Start
-Gui, Add, Button, w80 ys vSaveButton, S&ave
-Controls.Push("SaveButton")
-Gui, Add, Button, w80 ys vExitButton, E&xit
-Controls.Push("ExitButton")
-
-Gui, Add, Text, section xs, Status:
-Gui, Add, Checkbox, ys Disabled Check3 vStatusConnected, Connected
-Gui, Add, Checkbox, ys Disabled Check3 vStatusActive, Active
-
-GuiControl, , StatusConnected, -1
-GuiControl, , StatusActive, -1
-
+BuildGui()
 ReadConfig()
-
 Gui, Show
 
 SetKeyDelay, %DEFAULT_KEY_DELAY%
@@ -170,7 +125,7 @@ Loop {
 	WinGetTitle, ActiveWin, A
 
 	If (!Paused && ActiveWin = "Diablo III") {
-		Loop 9 {
+		Loop %BYTE_COUNT% {
 			PixelGetColor, ByteColor, 2, 2 + (A_Index - 1) * 5
 			Bytes[A_Index] := ByteColor & 0xFF
 			StatusConnected := Bytes[A_Index] = ByteColor ? 1 : 0
@@ -180,8 +135,8 @@ Loop {
 
 		If (StatusConnected) {
 			GuiControl, , StatusConnected, 1
-			If (Counter != Bytes[9]) {
-				Counter := Bytes[9]
+			If (Counter != Bytes[BYTE_COUNT]) {
+				Counter := Bytes[BYTE_COUNT]
 				ParseBytes()
 	
 				If (Active) {
@@ -216,7 +171,95 @@ Loop {
 	Sleep, 5
 }
 
-F1::ToggleStartStop()
+;F1::ToggleStartStop()
+
+BuildGui()
+{
+	global
+	
+	w := 310
+	
+	For class_index, class in Classes {
+		If (class_index = 1)
+			Gui, Add, GroupBox, Section R4 W%w%, %class%
+		Else
+			Gui, Add, GroupBox, Section R4 W%w% xs, %class%
+
+		For skill_index, skill in %class% {
+			x := 10+30*(skill_index-1)
+			Gui, Add, Picture, xs+%x% ys+20, SkillPictures\%skill%.bmp
+		
+			Control = %skill%Enabled
+			Controls.Push(Control)
+			Gui, Add, Checkbox, xp yp+25 v%skill%Enabled
+			Control = %skill%Key
+			Controls.Push(Control)
+			Gui, Add, Edit, xp yp+18 w17 v%skill%Key Limit1
+		}
+	}
+
+	Gui, Add, GroupBox, Section R4 W65 xs, General
+
+	Gui, Add, Picture, xs+10 ys+20, SkillPictures\Potion.bmp
+	Gui, Add, Checkbox, xp yp+25 vPotionEnabled
+	Controls.Push("PotionEnabled")
+	Gui, Add, Edit, xp yp+18 w17 vPotionKey Limit1
+	Controls.Push("PotionKey")
+
+	Gui, Add, Picture, xs+40 ys+20, SkillPictures\HexingPants.bmp
+	Gui, Add, Checkbox, xp yp+25 vHexingPantsEnabled
+	Controls.Push("HexingPantsEnabled")
+
+	Gui, Add, GroupBox, Section xs+75 ys R4 W235, Options
+
+	Gui, Add, Checkbox, xs+10 ys+20 vSecondSim,  Delay first Simulacrum
+	Controls.Push("SecondSim")
+
+	Gui, Add, Text, xs+10 yp+25, Force Stand Still:
+	Gui, Add, Edit, yp-3 xp+85 w40 vForceStandStillKey Limit5
+	Controls.Push("ForceStandStillKey")
+
+	Gui, Add, Text, xs+10 yp+25, Start/Stop Function Key: F
+	Gui, Add, Edit, yp-3 xp+126 w20 vStartStopFKey Number Limit2
+	Controls.Push("StartStopFKey")
+	
+	Gui, Add, Button, Default w80 section xm vButtonStartStop gButtonStartStop, &Start
+	Gui, Add, Button, w80 ys vSaveButton, S&ave
+	Controls.Push("SaveButton")
+	Gui, Add, Button, w80 ys vExitButton, E&xit
+	Controls.Push("ExitButton")
+
+	Gui, Add, Text, section xs, Status:
+	Gui, Add, Checkbox, ys Disabled Check3 vStatusConnected, Connected
+	Gui, Add, Checkbox, ys Disabled Check3 vStatusActive, Active
+
+	GuiControl, , StatusConnected, -1
+	GuiControl, , StatusActive, -1
+
+	x := w + 10
+	Gui, Add, GroupBox, Section H499 W300 xm+%x% ym, Help
+	Gui, Add, Picture, xs+10 ys+20, SkillPictures\IgnorePain.bmp
+	Gui, Add, Checkbox, xp yp+25 vHelpTick
+	GuiControl, , HelpTick, 1
+	Gui, Add, Edit, xp yp+18 w17 Limit1, 1
+	Gui, Add, Text, xs+40 ys+22, <= Skill
+	Gui, Add, Text, xs+40 ys+44, <= Tick to enable
+	Gui, Add, Text, xs+40 ys+66, <= Skill use key 0-9, a-z, L, R (Left or Right Click)
+	
+	Gui, Add, Picture, xs+10 ys+90, SkillPictures\Potion.bmp
+	Gui, Add, Text, xs+40 yp+2, Use potion at low health
+	
+	Gui, Add, Picture, xs+10 ys+118, SkillPictures\HexingPants.bmp
+	Gui, Add, Text, xs+40 yp-5, Keep Hexing Pants buff up
+	Gui, Add, Text, xs+40 yp+15, (Assign Middle Mouse Button to Force Move)
+	Gui, Add, Text, xs+10 yp+22, Force Stand Still key: 0-9, a-z, Space, Alt, Shift, Ctrl
+	
+	Gui, Add, Text, xs+10 yp+20, Status:
+	Gui, Add, Text, xp+40 yp, Connected: OzHelper and TurboHUD connected
+	Gui, Add, Text, xp yp+15, Active: OzHelper is active
+
+	Gui, Add, Text, xs+10 yp+20, Start/Stop Function Key: Save to activate change
+}
 
 ButtonStartStop:
 	ToggleStartStop()
@@ -225,6 +268,7 @@ Return
 ButtonSave:
 	Gui, Submit, NoHide
 	WriteConfig()
+	Reload
 Return	
 
 ButtonExit:
@@ -269,7 +313,7 @@ ReadConfig()
 	For class_index, class in Classes {
 		For skill_index, skill  in %class% {
 			IniRead, %skill%Enabled,  OzHelper.ini, %class%,  %skill%Enabled, 0
-			IniRead, %skill%Key, OzHelper.ini, %class%, %skill%Key,  X
+			IniRead, %skill%Key, OzHelper.ini, %class%, %skill%Key,  U
 			SkillEnabled := %skill%Enabled
 			SkillKey := %skill%Key
 			GuiControl, , %skill%Enabled, %SkillEnabled%
@@ -290,6 +334,11 @@ ReadConfig()
 
 	IniRead, ForceStandStillKey, OzHelper.ini, Settings, ForceStandStillKey, Shift
 	GuiControl, ,ForceStandStillKey, %ForceStandStillKey%
+
+	IniRead, StartStopFKey, OzHelper.ini, Settings, StartStopFKey, 1
+	GuiControl, ,StartStopFKey, %StartStopFKey%
+	
+	Hotkey, F%StartStopFkey%, ButtonStartStop
 }
 
 WriteConfig()
@@ -310,6 +359,7 @@ WriteConfig()
 	IniWrite, %HexingPantsEnabled%, OzHelper.ini, Settings, HexingPantsEnabled
 	IniWrite, %SecondSim%, OzHelper.ini, Settings, SecondSim
 	IniWrite, %ForceStandStillKey%, OzHelper.ini, Settings, ForceStandStillKey
+	IniWrite, %StartStopFKey%, OzHelper.ini, Settings, StartStopFKey
 }
 
 ParseBytes()
@@ -561,5 +611,4 @@ DemonHunter()
 	;Multishot
 	if (CastMultishot && MultishotEnabled)
 		SendKeyOrMouseWithoutMove(MultishotKey)
-
 }
